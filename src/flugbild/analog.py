@@ -10,6 +10,9 @@ frame. Two faults are handled:
 * Hue tears. A disturbed subcarrier phase paints rainbow stripes: saturated
   colour whose hue jumps from one row to the next. The vertical hue change of
   saturated chroma marks these stripes inside a single frame.
+* Unbacked bands. Stripes that keep reappearing at the same edge survive the
+  temporal step. Their top and bottom are colour edges without a brightness
+  edge; there the colour is refilled from a local luma-to-colour model.
 
 The current luma is kept. Chroma is re-estimated from three earlier and three
 later frames aligned to the current one with optical flow, weighted by how
@@ -99,6 +102,53 @@ class _Aligner:
                 moved[:, :, 3], moved[:, :, 4])
 
 
+def _unbacked_bands(chroma: np.ndarray, luma: np.ndarray) -> np.ndarray:
+    """Score 0..1 for horizontal colour bands that the brightness does not explain.
+
+    Real colour edges almost always come with a brightness edge (another
+    material, another light). The top and bottom of a carrier band are colour
+    edges in flat brightness, running across a long stretch of the row.
+    """
+    height = chroma.shape[0]
+    colour_step = np.abs(chroma[1:] - chroma[:-1])
+    light_step = np.abs(luma[1:] - luma[:-1])
+    vivid = np.maximum(np.abs(chroma[1:]), np.abs(chroma[:-1])) > 10
+    lone = ((colour_step > 8) & (light_step < 5) & vivid).astype(np.float32)
+    lone = np.vstack([lone, lone[-1:]])
+    run = cv2.blur(lone, (31, 1))
+    edges = np.clip((run - 0.3) / 0.3, 0, 1)
+    reach = max(2, height // 30)
+    bands = cv2.dilate(edges, np.ones((2 * reach + 1, 1), np.uint8))
+    return cv2.GaussianBlur(bands, (9, 3), 0).astype(np.float32)
+
+
+def _luma_guided(chroma: np.ndarray, luma: np.ndarray, doubt: np.ndarray) -> np.ndarray:
+    """Chroma predicted from luma by a local linear model fitted on trusted pixels.
+
+    Within a neighbourhood, one surface keeps its colour while its brightness
+    varies, so colour is modelled as a linear function of luma there. The fit
+    ignores doubtful pixels and then fills them. Without enough trusted pixels
+    nearby the prediction fades to neutral grey.
+    """
+    trust = (1 - doubt).astype(np.float32)
+    window = (61, 25)
+
+    def mean(values: np.ndarray) -> np.ndarray:
+        return cv2.blur(values * trust, window) / np.maximum(cv2.blur(trust, window), 1e-3)
+
+    light = mean(luma)
+    spread = mean(luma * luma) - light * light
+    predicted = np.zeros(chroma.shape, np.complex64)
+    for part, unit in ((chroma.real, 1), (chroma.imag, 1j)):
+        colour = mean(part)
+        slope = (mean(luma * part) - light * colour) / (spread + 25.0)
+        offset = colour - slope * light
+        slope, offset = cv2.blur(slope, (31, 13)), cv2.blur(offset, (31, 13))
+        predicted += unit * (slope * luma + offset)
+    coverage = np.clip(cv2.blur(trust, window) / 0.3, 0, 1)
+    return predicted * coverage
+
+
 def repair_window(aligner: _Aligner, window: list[_FrameData], center: int,
                   amount: int, overlay: np.ndarray) -> np.ndarray:
     """Return the repaired BGR frame for ``window[center]``.
@@ -148,6 +198,12 @@ def repair_window(aligner: _Aligner, window: list[_FrameData], center: int,
     calming = amount / 100 * 0.9 * np.minimum(prior[1:].sum(axis=0) / 2, 1)
     strength = np.maximum(np.maximum(drained, stray), np.maximum(own_tears, calming))
     change = (goal - present.chroma) * strength
+    # Bands that keep reappearing at the same edge survive the temporal step;
+    # catch them in the repaired frame by their missing brightness edge.
+    repaired = present.chroma + change
+    bands = _unbacked_bands(repaired, present.luma) * (1 - overlay)
+    if bands.max() > 0.05:
+        change += (_luma_guided(repaired, present.luma, bands) - repaired) * bands
     height, width = present.ycc.shape[:2]
     planes = cv2.resize(np.dstack([change.real, change.imag]).astype(np.float32),
                         (width, height), interpolation=cv2.INTER_LINEAR)

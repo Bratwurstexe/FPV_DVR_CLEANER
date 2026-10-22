@@ -21,11 +21,12 @@ class Arbeitsrezept:
     kompressionswert: int = 20
     dateiziel_mb: int = 0
     osd_entfernen: bool = False
+    rauschminderung: int = 0
 
     def validate(self) -> None:
         if self.signalart not in {"analog", "digital", "neutral"}:
             raise ValueError("Unknown signal profile")
-        for name in ("farbberuhigung", "blockpflege", "kantendetail", "bewegungsspur"):
+        for name in ("farbberuhigung", "blockpflege", "kantendetail", "bewegungsspur", "rauschminderung"):
             if not 0 <= getattr(self, name) <= 100:
                 raise ValueError(f"{name} must be between 0 and 100")
         if self.vergroesserung_prozent not in {100, 150, 200}:

@@ -31,9 +31,9 @@
     <text x="697" y="184" text-anchor="middle" fill="#5F676D" font-size="12">find &amp; refill overlays</text>
     <line x1="784" y1="156" x2="812" y2="156" stroke="#9A4100" stroke-width="2.5" marker-end="url(#arrow)"/>
     <rect x="816" y="110" width="170" height="92" rx="12" fill="#FFFFFF" stroke="#E0B08A" stroke-width="2"/>
-    <text x="901" y="140" text-anchor="middle" fill="#9A4100" font-weight="700" font-size="12">4 · OPTIONAL</text>
-    <text x="901" y="163" text-anchor="middle" fill="#20252B" font-weight="700">Upscaling</text>
-    <text x="901" y="184" text-anchor="middle" fill="#5F676D" font-size="12">1.5× / 2× multi-frame</text>
+    <text x="901" y="140" text-anchor="middle" fill="#9A4100" font-weight="700" font-size="12">4 · FUSION</text>
+    <text x="901" y="163" text-anchor="middle" fill="#20252B" font-weight="700">Noise &amp; size</text>
+    <text x="901" y="184" text-anchor="middle" fill="#5F676D" font-size="12">denoise · 1.5× / 2×</text>
     <line x1="988" y1="156" x2="1016" y2="156" stroke="#9A4100" stroke-width="2.5" marker-end="url(#arrow)"/>
     <rect x="1020" y="110" width="140" height="92" rx="12" fill="#A64600"/>
     <text x="1090" y="148" text-anchor="middle" fill="#FFFFFF" font-weight="700">MP4 output</text>

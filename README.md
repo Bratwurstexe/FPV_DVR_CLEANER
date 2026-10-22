@@ -23,17 +23,16 @@ Removes rainbow stripes and black-and-white dropouts, paints out the OSD and ups
 
 ## Features
 
-| | |
-|---|---|
-| 🌈 **Rainbow stripes gone** | Hue tears from a disturbed colour carrier are detected in each frame and replaced with colour from neighbouring frames. |
-| ⚫⚪ **Black-and-white dropouts filled** | Frames or row bands where the receiver lost colour get their colour back; the brightness is never touched. |
-| 🧾 **OSD removal** | Finds text, icons and bars that stay in place while the picture moves, including warnings that appear only briefly, and refills them from frames where the scene behind them is visible. |
-| 🔍 **Multi-frame upscaling** | 1.5× (720p → 1080p) or 2×. Neighbouring frames add detail and calm noise instead of just enlarging one frame. |
-| ✂️ **Filmstrip trim editor** | Thumbnail timeline with zoom, start/end markers, quick play and keyboard shortcuts (`I`, `O`, `Space`, arrows). |
-| 👀 **Check before you export** | Render any frame through the whole chain and compare original and result with a split slider. |
-| ⏱️ **Batch export** | Every clip keeps its own cut. Live remaining time (hh:mm:ss), cancel at any moment, original audio kept. |
-| 🧠 **Optional local training** | A tiny self-supervised model can learn your receiver's pixel statistics from your own footage. |
-| 🔒 **Private** | No account, no upload, no telemetry. Everything runs locally. |
+- **Rainbow stripes removed.** Hue tears from a disturbed colour carrier are detected in each frame and replaced with colour from neighbouring frames.
+- **Black-and-white dropouts filled.** Frames or row bands where the receiver lost colour get their colour back; the brightness is never touched.
+- **Noise reduction and streak repair.** Five motion-aligned frames are fused around a robust median. Grain calms down, bright or dark streaks disappear, and moving edges stay sharp.
+- **OSD removal.** Text, icons and bars that stay in place while the picture moves are found, including warnings that appear only briefly. They are refilled from frames where the scene behind them is visible.
+- **Multi-frame upscaling.** 1.5× (720p to 1080p) or 2×. Neighbouring frames add detail instead of just enlarging a single frame.
+- **Filmstrip trim editor.** A thumbnail timeline with zoom, start and end markers, quick play and keyboard shortcuts (`I`, `O`, `Space`, arrow keys).
+- **Check before you export.** Render any frame through the whole chain and compare original and result with a split slider.
+- **Batch export.** Every clip keeps its own cut. The remaining time is shown live, you can cancel at any moment, and the original audio is kept.
+- **Optional local training.** A small self-supervised model can learn your receiver's pixel statistics from your own footage.
+- **Private.** No account, no upload, no telemetry. Everything runs locally.
 
 ## Before and after
 
@@ -73,9 +72,13 @@ You can add a small network trained on your own recordings (*Model training*). F
 - **Brief overlays:** a sliding window applies the same test to warnings that appear only for a moment, but only while the scene is moving.
 - **Removal:** each region is filled from the neighbouring frame whose aligned content fits the region's rim best, with its brightness offset corrected. Motion is chained frame by frame, so even frames far apart line up. Where no frame shows the background, the region is inpainted.
 
-### 4 · Multi-frame upscaling
+### 4 · Multi-frame fusion: noise reduction and upscaling
 
-The current frame and two frames on each side are enlarged with Lanczos and warped onto the same grid. They are then fused with weights that drop where they disagree. A mild, clipped detail lift follows, which avoids halos.
+The current frame and two frames on each side are aligned onto the same grid. If upscaling is on, they are enlarged with Lanczos first.
+
+- The per-pixel **median** of the five values is the reference. A bright or dark streak in one frame is an outlier against it and gets replaced, and random grain averages out.
+- Every value is weighted by its distance to that reference. Where the aligned frames disagree among themselves, for example because of occlusion or a wrong motion estimate, the original pixel is kept, so nothing ghosts.
+- A mild, clipped detail lift follows, which avoids halos.
 
 The output is H.264 MP4 with the original audio. Results are written to a temporary file and only renamed when the export succeeds.
 

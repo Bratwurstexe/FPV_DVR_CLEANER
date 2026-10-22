@@ -610,11 +610,12 @@ public partial class MainWindow : Window
 
     private void Setting_Changed(object? sender, RoutedEventArgs e)
     {
-        if (ColourValue == null || ColorSlider == null) return;
+        if (ColourValue == null || BlockValue == null || DetailValue == null || MotionValue == null || NoiseValue == null) return;
         ColourValue.Text = $"{(int)ColorSlider.Value}";
         BlockValue.Text = $"{(int)BlockSlider.Value}";
         DetailValue.Text = $"{(int)DetailSlider.Value}";
         MotionValue.Text = $"{(int)MotionSlider.Value}";
+        NoiseValue.Text = $"{(int)NoiseSlider.Value}";
         UpdateCleanHint();
     }
 
@@ -622,6 +623,7 @@ public partial class MainWindow : Window
     {
         if (CleanHint == null || RemoveOsd == null) return;
         var parts = new List<string> { IsAnalog ? "Analog" : "HDZero" };
+        if (NoiseSlider.Value > 0) parts.Add("denoised");
         if (RemoveOsd.IsChecked == true) parts.Add("OSD removed");
         if (SizePercent != 100) parts.Add((SizePercent / 100.0).ToString("0.#", CultureInfo.InvariantCulture) + "×");
         CleanHint.Text = string.Join(" · ", parts);
@@ -646,6 +648,7 @@ public partial class MainWindow : Window
         kompressionswert = (int)(QualityValue.Value ?? 18),
         dateiziel_mb = (int)(SizeCap.Value ?? 0),
         osd_entfernen = RemoveOsd.IsChecked == true,
+        rauschminderung = (int)NoiseSlider.Value,
     };
 
     private string Mode => ModeChoice.SelectedIndex == 1 ? "model" : "manual";

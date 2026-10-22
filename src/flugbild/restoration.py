@@ -25,7 +25,7 @@ from .osd import detect_osd, remove_stream
 from .processor import (Laufergebnis, caption_workspace, encoding_options,
                         diagnostic_tail, output_duration, temporary_output, video_filters)
 from .recipe import Arbeitsrezept
-from .upscale import target_size, upscale_stream
+from .upscale import fuse_stream, target_size
 
 
 def _aligned_reference(current: np.ndarray, reference: np.ndarray) -> np.ndarray:
@@ -136,10 +136,15 @@ def _model_stage(frames: Iterable[np.ndarray], recipe: Arbeitsrezept,
         fill_window()
 
 
+def _fused(recipe: Arbeitsrezept) -> bool:
+    """Whether the multi-frame fusion stage runs (noise reduction or a new size)."""
+    return recipe.vergroesserung_prozent != 100 or recipe.rauschminderung > 0
+
+
 def _stages(frames: Iterable[np.ndarray], recipe: Arbeitsrezept,
             fingerprint: Signalsignatur | NeuralProfile | None,
             osd: np.ndarray | None) -> Iterator[np.ndarray]:
-    """Chain the frame stages in their fixed order: colour, model, OSD, size."""
+    """Chain the frame stages in their fixed order: colour, model, OSD, fusion."""
     stream: Iterable[np.ndarray] = frames
     if recipe.signalart == "analog" and recipe.farbberuhigung > 0:
         stream = repair_stream(stream, recipe.farbberuhigung, osd)
@@ -147,8 +152,9 @@ def _stages(frames: Iterable[np.ndarray], recipe: Arbeitsrezept,
         stream = _model_stage(stream, recipe, fingerprint)
     if recipe.osd_entfernen and osd is not None:
         stream = remove_stream(stream, osd)
-    if recipe.vergroesserung_prozent != 100:
-        stream = upscale_stream(stream, recipe.vergroesserung_prozent, recipe.kantendetail / 50)
+    if _fused(recipe):
+        stream = fuse_stream(stream, recipe.vergroesserung_prozent, recipe.rauschminderung / 100,
+                             recipe.kantendetail / 50)
     return iter(stream)
 
 
@@ -210,7 +216,8 @@ def process_temporal(source: Path, target: Path, recipe: Arbeitsrezept, info: Vi
     analog = recipe.signalart == "analog" and recipe.farbberuhigung > 0
     osd = clip_mask(source, recipe, info, duration)
     upscaled = recipe.vergroesserung_prozent != 100
-    filters = video_filters(recipe, restored=fingerprint is not None or analog, upscaled=upscaled)
+    # Fusion applies detail and size itself; FFmpeg must not do it again.
+    filters = video_filters(recipe, restored=fingerprint is not None or analog, upscaled=_fused(recipe))
     options = encoding_options(recipe, info, duration)
     fps = info.fps
     if not fps:
