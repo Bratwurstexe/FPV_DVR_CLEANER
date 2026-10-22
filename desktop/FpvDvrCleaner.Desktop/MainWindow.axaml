@@ -1,0 +1,290 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FpvDvrCleaner.Desktop.MainWindow" Title="FPV DVR Cleaner"
+        Icon="avares://FpvDvrCleaner.Desktop/Assets/app.png" Width="1320" Height="880" MinWidth="1080" MinHeight="700"
+        Background="#F3F3F0" KeyDown="Window_KeyDown">
+  <Window.Styles>
+    <Style Selector="TextBlock.eyebrow"><Setter Property="FontSize" Value="11"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="#9A4100"/><Setter Property="LetterSpacing" Value="0.6"/></Style>
+    <Style Selector="TextBlock.heading"><Setter Property="FontSize" Value="20"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Foreground" Value="#20252B"/></Style>
+    <Style Selector="TextBlock.note"><Setter Property="Foreground" Value="#5F676D"/><Setter Property="TextWrapping" Value="Wrap"/></Style>
+    <Style Selector="TextBlock.label"><Setter Property="FontSize" Value="11"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Foreground" Value="#4E565C"/></Style>
+    <Style Selector="Border.card"><Setter Property="Background" Value="White"/><Setter Property="CornerRadius" Value="14"/><Setter Property="Padding" Value="22"/><Setter Property="BorderBrush" Value="#E3E4E0"/><Setter Property="BorderThickness" Value="1"/></Style>
+
+    <Style Selector="Button"><Setter Property="Background" Value="#E8E9E6"/><Setter Property="Foreground" Value="#20252B"/><Setter Property="Padding" Value="15,9"/><Setter Property="CornerRadius" Value="9"/></Style>
+    <!-- Fluent paints hover and pressed states on the template part, so every
+         state is set there too; otherwise it would fall back to grey on white. -->
+    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#DADCD8"/><Setter Property="Foreground" Value="#20252B"/></Style>
+    <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#CBCECA"/><Setter Property="Foreground" Value="#20252B"/></Style>
+    <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#EEEFEC"/><Setter Property="Foreground" Value="#7D858A"/></Style>
+    <Style Selector="Button.accent"><Setter Property="Background" Value="#A64600"/><Setter Property="Foreground" Value="White"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#8C3B00"/><Setter Property="Foreground" Value="White"/></Style>
+    <Style Selector="Button.accent:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#6F2F00"/><Setter Property="Foreground" Value="White"/></Style>
+    <Style Selector="Button.accent:disabled /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#E3C9B6"/><Setter Property="Foreground" Value="#5E4A3C"/></Style>
+    <Style Selector="Button.dark"><Setter Property="Background" Value="#3A424A"/><Setter Property="Foreground" Value="White"/><Setter Property="Padding" Value="12,7"/></Style>
+    <Style Selector="Button.dark:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#4B545D"/><Setter Property="Foreground" Value="White"/></Style>
+    <Style Selector="Button.dark:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#5A646E"/><Setter Property="Foreground" Value="White"/></Style>
+    <Style Selector="Button.dark:disabled /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#30373E"/><Setter Property="Foreground" Value="#7E878F"/></Style>
+    <Style Selector="Button.step"><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#D3D8DC"/><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Left"/><Setter Property="Padding" Value="14,12"/><Setter Property="Margin" Value="0,3"/></Style>
+    <Style Selector="Button.step:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#353C43"/><Setter Property="Foreground" Value="White"/></Style>
+    <Style Selector="Button.step:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#4A535C"/><Setter Property="Foreground" Value="White"/></Style>
+    <Style Selector="Button.step.current /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#424B54"/><Setter Property="Foreground" Value="White"/></Style>
+    <Style Selector="Button.step.current:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#4B555E"/><Setter Property="Foreground" Value="White"/></Style>
+    <Style Selector="Button.row"><Setter Property="Background" Value="Transparent"/><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Left"/></Style>
+    <Style Selector="Button.remove"><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#9C3F1F"/><Setter Property="FontWeight" Value="Bold"/></Style>
+    <Style Selector="Button.remove:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#F6DED4"/><Setter Property="Foreground" Value="#7A2E14"/></Style>
+
+    <Style Selector="RadioButton.segment">
+      <Setter Property="Foreground" Value="#20252B"/>
+      <Setter Property="Background" Value="#ECEDEA"/>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="Pill" Background="{TemplateBinding Background}" CornerRadius="9" Padding="16,9" Margin="0,0,6,0">
+            <ContentPresenter Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="RadioButton.segment:pointerover"><Setter Property="Background" Value="#DFE1DD"/></Style>
+    <Style Selector="RadioButton.segment:checked"><Setter Property="Background" Value="#A64600"/><Setter Property="Foreground" Value="White"/></Style>
+    <Style Selector="RadioButton.segment:checked:pointerover"><Setter Property="Background" Value="#8C3B00"/></Style>
+
+    <Style Selector="TextBox"><Setter Property="Background" Value="White"/><Setter Property="Foreground" Value="#20252B"/><Setter Property="BorderBrush" Value="#C9CDCB"/><Setter Property="CornerRadius" Value="8"/><Setter Property="Padding" Value="10,7"/></Style>
+    <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement"><Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="#A64600"/></Style>
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement"><Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="#A64600"/></Style>
+    <Style Selector="TextBox /template/ TextBlock#PART_Watermark"><Setter Property="Foreground" Value="#6E767B"/></Style>
+    <Style Selector="CheckBox"><Setter Property="Foreground" Value="#20252B"/></Style>
+  </Window.Styles>
+
+  <Grid ColumnDefinitions="232,*">
+    <!-- Step rail -->
+    <Border Background="#22282E" Padding="16"><Grid RowDefinitions="Auto,*,Auto">
+      <StackPanel Margin="6,16,6,26" Spacing="4">
+        <Border Width="46" Height="46" Background="#B9530F" CornerRadius="12" HorizontalAlignment="Left">
+          <TextBlock Text="FPV" Foreground="White" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+        <TextBlock x:Name="AppNameLabel" Text="FPV DVR Cleaner" Foreground="White" FontWeight="Bold" FontSize="18" Margin="0,12,0,0"/>
+        <TextBlock Text="Analog &amp; HDZero restoration" Foreground="#A9B1B7" FontSize="11"/>
+      </StackPanel>
+      <StackPanel Grid.Row="1">
+        <TextBlock Text="WORKFLOW" Foreground="#8E989F" FontSize="10" FontWeight="Bold" Margin="8,0,0,6"/>
+        <Button x:Name="ImportStep" Classes="step current" Click="ImportStep_Click"><StackPanel><TextBlock Text="1  Import" FontWeight="SemiBold" Foreground="{Binding $parent[Button].Foreground}"/><TextBlock x:Name="ImportHint" Text="Add recordings" FontSize="11" Foreground="#9AA3A9"/></StackPanel></Button>
+        <Button x:Name="TrimStep" Classes="step" Click="TrimStep_Click"><StackPanel><TextBlock Text="2  Trim" FontWeight="SemiBold" Foreground="{Binding $parent[Button].Foreground}"/><TextBlock x:Name="TrimHint" Text="Pick the part to keep" FontSize="11" Foreground="#9AA3A9"/></StackPanel></Button>
+        <Button x:Name="CleanStep" Classes="step" Click="CleanStep_Click"><StackPanel><TextBlock Text="3  Repair" FontWeight="SemiBold" Foreground="{Binding $parent[Button].Foreground}"/><TextBlock x:Name="CleanHint" Text="Repair, OSD, size" FontSize="11" Foreground="#9AA3A9"/></StackPanel></Button>
+        <Button x:Name="ExportStep" Classes="step" Click="ExportStep_Click"><StackPanel><TextBlock Text="4  Export" FontWeight="SemiBold" Foreground="{Binding $parent[Button].Foreground}"/><TextBlock x:Name="ExportHint" Text="Render the queue" FontSize="11" Foreground="#9AA3A9"/></StackPanel></Button>
+        <TextBlock Text="TOOLS" Foreground="#8E989F" FontSize="10" FontWeight="Bold" Margin="8,22,0,6"/>
+        <Button x:Name="TrainStep" Classes="step" Click="TrainStep_Click"><StackPanel><TextBlock Text="Model training" FontWeight="SemiBold" Foreground="{Binding $parent[Button].Foreground}"/><TextBlock Text="Optional, advanced" FontSize="11" Foreground="#9AA3A9"/></StackPanel></Button>
+      </StackPanel>
+      <TextBlock Grid.Row="2" Text="Runs locally &#x00B7; open source" Foreground="#8E989F" FontSize="10" Margin="8"/>
+    </Grid></Border>
+
+    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
+      <!-- Header -->
+      <Border Background="White" BorderBrush="#E3E4E0" BorderThickness="0,0,0,1" Padding="28,16">
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+          <StackPanel><TextBlock x:Name="PageTitle" Text="Import" FontSize="26" FontWeight="Bold" Foreground="#20252B"/><TextBlock x:Name="PageSubtitle" Text="Bring in your DVR recordings." Foreground="#5F676D" Margin="0,3,0,0"/></StackPanel>
+          <ComboBox x:Name="ClipPicker" Grid.Column="1" Width="300" VerticalAlignment="Center" PlaceholderText="No clip selected" SelectionChanged="ClipPicker_Changed"/>
+          <Border Grid.Column="2" Background="#FFF0E6" CornerRadius="14" Padding="12,6" VerticalAlignment="Center"><TextBlock x:Name="CountLabel" Text="0 clips" Foreground="#9A4100" FontWeight="SemiBold"/></Border>
+        </Grid>
+      </Border>
+
+      <ScrollViewer Grid.Row="1" x:Name="PageScroller"><Grid Margin="28,22" MaxWidth="1180">
+
+        <!-- 1 Import -->
+        <StackPanel x:Name="ImportPage" Spacing="16">
+          <Border x:Name="DropZone" Background="#FFF8F2" BorderBrush="#E7B48F" BorderThickness="2" CornerRadius="14" Padding="28" DragDrop.AllowDrop="True">
+            <StackPanel Spacing="10" HorizontalAlignment="Center">
+              <TextBlock Text="Drop DVR recordings here" FontSize="20" FontWeight="SemiBold" Foreground="#20252B" HorizontalAlignment="Center"/>
+              <TextBlock Text=".ts .mp4 .mov .mkv .avi .m4v from analog or HDZero goggles and receivers" Classes="note" HorizontalAlignment="Center"/>
+              <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,6,0,0">
+                <Button Classes="accent" Content="Browse files" Click="Add_Click"/>
+                <Button Content="Add a whole folder" Click="AddFolder_Click"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+          <Border Classes="card"><StackPanel Spacing="10">
+            <TextBlock Text="QUEUE" Classes="eyebrow"/>
+            <TextBlock x:Name="QueueEmpty" Text="Nothing here yet. Every clip you add keeps its own cut and is exported with the same cleaning settings." Classes="note"/>
+            <StackPanel x:Name="QueueList" Spacing="6"/>
+            <TextBlock x:Name="ImportStatus" Text="" Classes="note"/>
+          </StackPanel></Border>
+        </StackPanel>
+
+        <!-- 2 Trim -->
+        <StackPanel x:Name="TrimPage" IsVisible="False" Spacing="14">
+          <Border Background="#1B2025" CornerRadius="14" Padding="14"><StackPanel Spacing="10">
+            <Grid Height="420">
+              <Image x:Name="TrimPreview" Stretch="Uniform"/>
+              <Border Background="#B0000000" CornerRadius="6" Padding="8,4" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8"><TextBlock x:Name="PlayheadLabel" Text="00:00.00" Foreground="White" FontFamily="Consolas, Menlo, monospace" FontWeight="SemiBold"/></Border>
+              <Border x:Name="TrimLoading" IsVisible="False" Background="#B0000000" CornerRadius="6" Padding="8,4" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8"><TextBlock Text="Loading frame&#x2026;" Foreground="White"/></Border>
+            </Grid>
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button Classes="dark" Content="&#x23EE;" ToolTip.Tip="Go to start (Home)" Click="GoStart_Click"/>
+                <Button Classes="dark" Content="&#x2212;1 s" ToolTip.Tip="Back one second (Left)" Click="Back_Click"/>
+                <Button x:Name="PlayButton" Classes="dark" Content="&#x25B6; Play" MinWidth="86" ToolTip.Tip="Quick play from the filmstrip (Space)" Click="Play_Click"/>
+                <Button Classes="dark" Content="+1 s" ToolTip.Tip="Forward one second (Right)" Click="Forward_Click"/>
+                <Button Classes="dark" Content="&#x23ED;" ToolTip.Tip="Go to end (End)" Click="GoEnd_Click"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                <Button Classes="dark" Content="Mark start  [I]" Click="MarkIn_Click"/>
+                <Button Classes="dark" Content="Mark end  [O]" Click="MarkOut_Click"/>
+                <Button Classes="dark" Content="Whole clip" Click="ResetCut_Click"/>
+              </StackPanel>
+            </Grid>
+            <!-- Filmstrip timeline -->
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+              <TextBlock Text="ZOOM" Foreground="#AEB6BC" FontSize="10" FontWeight="Bold" VerticalAlignment="Center"/>
+              <Slider x:Name="ZoomSlider" Grid.Column="1" Minimum="1" Maximum="8" Value="1" ValueChanged="Zoom_Changed"/>
+              <TextBlock x:Name="CutSummary" Grid.Column="2" Text="" Foreground="#FFC08E" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </Grid>
+            <ScrollViewer x:Name="StripScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+              <Canvas x:Name="StripCanvas" Height="112" Background="#2A3138" PointerPressed="Strip_PointerPressed" PointerMoved="Strip_PointerMoved" PointerReleased="Strip_PointerReleased">
+                <Canvas x:Name="StripRuler" Height="18"/>
+                <StackPanel x:Name="StripTiles" Orientation="Horizontal" Canvas.Top="18"/>
+                <Border x:Name="ShadeBefore" Background="#C8101418" Canvas.Top="18" Height="76"/>
+                <Border x:Name="ShadeAfter" Background="#C8101418" Canvas.Top="18" Height="76"/>
+                <Border x:Name="CutFrame" BorderBrush="#F08A3A" BorderThickness="0,3,0,3" Canvas.Top="18" Height="76"/>
+                <Border x:Name="InHandle" Width="12" Height="94" Canvas.Top="18" Background="#F08A3A" CornerRadius="3,0,0,3" Cursor="SizeWestEast"><TextBlock Text="[" Foreground="#20252B" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                <Border x:Name="OutHandle" Width="12" Height="94" Canvas.Top="18" Background="#F08A3A" CornerRadius="0,3,3,0" Cursor="SizeWestEast"><TextBlock Text="]" Foreground="#20252B" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                <Border x:Name="Playhead" Width="2" Height="112" Background="White"/>
+              </Canvas>
+            </ScrollViewer>
+            <TextBlock x:Name="StripStatus" Text="Choose a clip to build its filmstrip." Foreground="#AEB6BC" FontSize="11"/>
+          </StackPanel></Border>
+          <Border Classes="card"><Grid ColumnDefinitions="*,*,*,Auto" ColumnSpacing="14">
+            <StackPanel Spacing="4"><TextBlock Text="START" Classes="label"/><TextBox x:Name="InBox" LostFocus="CutBox_Changed" KeyDown="CutBox_KeyDown"/></StackPanel>
+            <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="END" Classes="label"/><TextBox x:Name="OutBox" LostFocus="CutBox_Changed" KeyDown="CutBox_KeyDown"/></StackPanel>
+            <StackPanel Grid.Column="2" Spacing="4"><TextBlock Text="KEPT" Classes="label"/><TextBlock x:Name="KeptLabel" Text="&#x2014;" FontSize="18" FontWeight="SemiBold" Foreground="#20252B" Margin="0,6,0,0"/></StackPanel>
+            <TextBlock Grid.Column="3" Classes="note" FontSize="11" VerticalAlignment="Center" MaxWidth="300" Text="Click the strip to move the playhead, drag the [ and ] markers, or use I / O, Space and the arrow keys (Shift: 5 s steps)."/>
+          </Grid></Border>
+        </StackPanel>
+
+        <!-- 3 Clean -->
+        <Grid x:Name="CleanPage" IsVisible="False" ColumnDefinitions="440,*" ColumnSpacing="16">
+          <StackPanel Spacing="14">
+            <Border Classes="card"><StackPanel Spacing="10">
+              <TextBlock Text="SIGNAL" Classes="eyebrow"/>
+              <StackPanel Orientation="Horizontal">
+                <RadioButton x:Name="AnalogChoice" Classes="segment" GroupName="signal" Content="Analog" IsChecked="True" IsCheckedChanged="Signal_Changed"/>
+                <RadioButton x:Name="DigitalChoice" Classes="segment" GroupName="signal" Content="HDZero" IsCheckedChanged="Signal_Changed"/>
+              </StackPanel>
+              <TextBlock x:Name="SignalNote" Classes="note" Text="Analog: rainbow stripes, black-and-white dropouts and colour noise are rebuilt from neighbouring frames."/>
+            </StackPanel></Border>
+            <Border Classes="card" x:Name="ColourCard"><StackPanel Spacing="8">
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="COLOUR REPAIR" Classes="eyebrow"/><TextBlock Grid.Column="1" x:Name="ColourValue" Text="60" Classes="label"/></Grid>
+              <Slider x:Name="ColorSlider" Minimum="0" Maximum="100" Value="60" ValueChanged="Setting_Changed"/>
+              <TextBlock Classes="note" FontSize="12" Text="0 turns the repair off. Higher values also calm colour noise between frames."/>
+            </StackPanel></Border>
+            <Border Classes="card" x:Name="BlockCard" IsVisible="False"><StackPanel Spacing="8">
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="BLOCK REPAIR" Classes="eyebrow"/><TextBlock Grid.Column="1" x:Name="BlockValue" Text="35" Classes="label"/></Grid>
+              <Slider x:Name="BlockSlider" Minimum="0" Maximum="100" Value="35" ValueChanged="Setting_Changed"/>
+              <TextBlock Classes="note" FontSize="12" Text="Softens HDZero block edges and broken macroblocks."/>
+            </StackPanel></Border>
+            <Border Classes="card"><StackPanel Spacing="10">
+              <TextBlock Text="ON-SCREEN DISPLAY" Classes="eyebrow"/>
+              <CheckBox x:Name="RemoveOsd" Content="Remove OSD (text, icons, bars)" IsCheckedChanged="Setting_Changed"/>
+              <Button x:Name="DetectOsdButton" Content="Show what will be removed" Click="DetectOsd_Click"/>
+              <TextBlock x:Name="OsdStatus" Classes="note" FontSize="12" Text="Overlays are found by edges that keep their direction while the picture moves."/>
+            </StackPanel></Border>
+            <Border Classes="card"><StackPanel Spacing="10">
+              <TextBlock Text="OUTPUT SIZE" Classes="eyebrow"/>
+              <StackPanel Orientation="Horizontal">
+                <RadioButton x:Name="SizeOriginal" Classes="segment" GroupName="size" Content="Original" IsChecked="True" IsCheckedChanged="Setting_Changed"/>
+                <RadioButton x:Name="Size150" Classes="segment" GroupName="size" Content="1.5&#x00D7;" IsCheckedChanged="Setting_Changed"/>
+                <RadioButton x:Name="Size200" Classes="segment" GroupName="size" Content="2&#x00D7;" IsCheckedChanged="Setting_Changed"/>
+              </StackPanel>
+              <TextBlock Classes="note" FontSize="12" Text="Multi-frame upscaling: neighbouring frames add detail and calm noise. 1.5&#x00D7; turns 720p into 1080p."/>
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="DETAIL" Classes="label"/><TextBlock Grid.Column="1" x:Name="DetailValue" Text="15" Classes="label"/></Grid>
+              <Slider x:Name="DetailSlider" Minimum="0" Maximum="100" Value="15" ValueChanged="Setting_Changed"/>
+            </StackPanel></Border>
+            <Expander Header="Advanced" HorizontalAlignment="Stretch" Background="White" CornerRadius="14">
+              <StackPanel Spacing="10" Margin="4">
+                <TextBlock Text="ENGINE" Classes="label"/>
+                <ComboBox x:Name="ModeChoice" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="Mode_Changed"><ComboBoxItem Content="Standard (no model needed)"/><ComboBoxItem Content="Standard + my trained model"/></ComboBox>
+                <StackPanel x:Name="ModelPanel" IsVisible="False" Spacing="8">
+                  <ComboBox x:Name="ModelChoice" HorizontalAlignment="Stretch" SelectionChanged="ModelChoice_Changed" PlaceholderText="Select a trained model"/>
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><TextBox x:Name="ModelPath" PlaceholderText="Model file"/><Button Grid.Column="1" Content="Browse" Click="ModelBrowse_Click"/></Grid>
+                </StackPanel>
+                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="MOTION BLEND" Classes="label"/><TextBlock Grid.Column="1" x:Name="MotionValue" Text="0" Classes="label"/></Grid>
+                <Slider x:Name="MotionSlider" Minimum="0" Maximum="100" Value="0" ValueChanged="Setting_Changed"/>
+              </StackPanel>
+            </Expander>
+          </StackPanel>
+          <StackPanel Grid.Column="1" Spacing="14">
+            <Border Classes="card"><StackPanel Spacing="10">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                <StackPanel><TextBlock Text="CHECK THE RESULT" Classes="eyebrow"/><TextBlock x:Name="PreviewTitle" Text="Frame at the trim playhead" Classes="heading" FontSize="17"/></StackPanel>
+                <Button x:Name="PreviewButton" Grid.Column="1" Classes="accent" Content="Render this frame" Click="Preview_Click" VerticalAlignment="Center"/>
+              </Grid>
+              <Grid x:Name="CompareCanvas" Height="430" Background="#1B2025" ClipToBounds="True" SizeChanged="Compare_SizeChanged">
+                <Image x:Name="CompareBefore" Stretch="Uniform"/>
+                <Image x:Name="CompareAfter" Stretch="Uniform"/>
+                <Border x:Name="CompareDivider" Width="2" Background="#F08A3A" HorizontalAlignment="Left" IsVisible="False"/>
+                <Border Background="#B0000000" CornerRadius="6" Padding="8,3" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8"><TextBlock Text="ORIGINAL" Foreground="White" FontSize="11" FontWeight="Bold"/></Border>
+                <Border Background="#B0A64600" CornerRadius="6" Padding="8,3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8"><TextBlock Text="CLEANED" Foreground="White" FontSize="11" FontWeight="Bold"/></Border>
+                <TextBlock x:Name="CompareHint" Text="Render a frame to compare original and cleaned picture." Foreground="#AEB6BC" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Grid>
+              <Slider x:Name="CompareSlider" Minimum="0" Maximum="100" Value="50" ValueChanged="Compare_Changed"/>
+              <TextBlock x:Name="PreviewStatus" Classes="note" FontSize="12" Text="The preview runs the full chain on a few frames around the playhead, so it takes a few seconds."/>
+            </StackPanel></Border>
+          </StackPanel>
+        </Grid>
+
+        <!-- 4 Export -->
+        <StackPanel x:Name="ExportPage" IsVisible="False" Spacing="14">
+          <Border Classes="card"><StackPanel Spacing="12">
+            <TextBlock Text="DESTINATION" Classes="eyebrow"/>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><TextBox x:Name="OutputFolder" PlaceholderText="Folder for the cleaned files"/><Button Grid.Column="1" Content="Choose folder" Click="OutputFolder_Click"/></Grid>
+            <Grid ColumnDefinitions="*,*,2*" ColumnSpacing="14">
+              <StackPanel Spacing="4"><TextBlock Text="QUALITY (14 BEST &#x2013; 32 SMALLEST)" Classes="label"/><NumericUpDown x:Name="QualityValue" Minimum="14" Maximum="32" Value="18"/></StackPanel>
+              <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="SIZE LIMIT, MB (0 = NONE)" Classes="label"/><NumericUpDown x:Name="SizeCap" Minimum="0" Maximum="10000" Value="0"/></StackPanel>
+              <StackPanel Grid.Column="2" Spacing="4"><TextBlock Text="CAPTION BURNED INTO THE VIDEO (OPTIONAL)" Classes="label"/><TextBox x:Name="CaptionText" PlaceholderText="e.g. pilot name or spot"/></StackPanel>
+            </Grid>
+            <TextBlock x:Name="ExportSummary" Classes="note" Text=""/>
+            <StackPanel Orientation="Horizontal" Spacing="10"><Button x:Name="ExportButton" Classes="accent" Content="Export queue" Click="Export_Clicked"/><Button x:Name="CancelExportButton" Content="Cancel export" IsEnabled="False" Click="CancelExport_Click"/></StackPanel>
+            <ProgressBar x:Name="ExportProgress" Minimum="0" Maximum="100" Height="8"/>
+            <TextBlock x:Name="ExportTime" Text="" FontWeight="SemiBold" Foreground="#20252B"/>
+            <TextBlock x:Name="ExportStatus" Text="Add clips in Import first." Classes="note"/>
+          </StackPanel></Border>
+          <Border x:Name="ReviewPanel" IsVisible="False" Classes="card"><StackPanel Spacing="10">
+            <TextBlock Text="FINISHED CLIP" Classes="eyebrow"/>
+            <Grid x:Name="ReviewCanvas" Height="400" Background="#1B2025" ClipToBounds="True" SizeChanged="Review_SizeChanged">
+              <Image x:Name="BeforeImage" Stretch="Uniform"/><Image x:Name="AfterImage" Stretch="Uniform"/>
+              <Border x:Name="Divider" Width="2" Background="#F08A3A" HorizontalAlignment="Left"/>
+            </Grid>
+            <Slider x:Name="WipeSlider" Minimum="0" Maximum="100" Value="50" ValueChanged="Wipe_Changed"/>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10"><Slider x:Name="ReviewSeek" Minimum="0" Maximum="1" ValueChanged="ReviewSeek_Changed"/><TextBlock x:Name="ReviewTime" Grid.Column="1" Text="0:00" VerticalAlignment="Center"/></Grid>
+            <Button Content="Open output folder" Click="OpenOutput_Click"/>
+          </StackPanel></Border>
+        </StackPanel>
+
+        <!-- Model training -->
+        <StackPanel x:Name="TrainPage" IsVisible="False" Spacing="14"><Border Classes="card"><StackPanel Spacing="12">
+          <TextBlock Text="OPTIONAL" Classes="eyebrow"/>
+          <TextBlock Text="Train a small model on your own footage" Classes="heading"/>
+          <TextBlock Classes="note" Text="Not needed for cleaning. A tiny self-supervised network learns your receiver's typical pixel statistics from damaged recordings; select it later under Repair &#x2192; Advanced."/>
+          <TextBlock Text="RECORDINGS FOLDER" Classes="label"/>
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><TextBox x:Name="TrainFolder" PlaceholderText="Folder with recordings"/><Button Grid.Column="1" Content="Choose folder" Click="TrainFolder_Click"/></Grid>
+          <TextBlock Text="SIGNAL" Classes="label"/>
+          <ComboBox x:Name="TrainSignal" SelectedIndex="0" SelectionChanged="TrainSignal_Changed"><ComboBoxItem Content="Analog"/><ComboBoxItem Content="HDZero"/></ComboBox>
+          <TextBlock Text="START FROM" Classes="label"/>
+          <ComboBox x:Name="TrainApproach" SelectedIndex="0" SelectionChanged="TrainApproach_Changed"><ComboBoxItem Content="A new model"/><ComboBoxItem Content="One of my models"/></ComboBox>
+          <StackPanel x:Name="ResumePanel" IsVisible="False" Spacing="6"><ComboBox x:Name="ResumeChoice" PlaceholderText="Choose a model"/></StackPanel>
+          <TextBlock Text="DURATION" Classes="label"/>
+          <StackPanel Orientation="Horizontal" Spacing="10"><NumericUpDown x:Name="TrainMinutes" Minimum="1" Maximum="60" Value="5" Width="130"/><ComboBox x:Name="TrainUnit" SelectedIndex="0" Width="120" SelectionChanged="TrainUnit_Changed"><ComboBoxItem Content="Minutes"/><ComboBoxItem Content="Hours"/></ComboBox></StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="10"><Button Classes="accent" Content="Start training" Click="StartTrain_Click"/><Button x:Name="CancelTrainButton" Content="Stop" IsEnabled="False" Click="CancelTrain_Click"/></StackPanel>
+          <ProgressBar x:Name="TrainProgress" Minimum="0" Maximum="100" Height="8"/>
+          <TextBlock x:Name="TrainStatus" Text="Ready" Classes="note"/>
+        </StackPanel></Border></StackPanel>
+      </Grid></ScrollViewer>
+
+      <!-- Step footer -->
+      <Border Grid.Row="2" Background="White" BorderBrush="#E3E4E0" BorderThickness="0,1,0,0" Padding="28,12">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <Button x:Name="BackButton" Content="&#x2190; Back" Click="Back_Step_Click"/>
+          <TextBlock x:Name="FooterNote" Grid.Column="1" Text="" Classes="note" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+          <Button x:Name="NextButton" Grid.Column="2" Classes="accent" Content="Next: Trim &#x2192;" Click="Next_Step_Click"/>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</Window>

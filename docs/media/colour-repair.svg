@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" width="1200" height="360" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="1200" height="360" rx="18" fill="#F7F6F2"/>
+  <text x="40" y="52" font-size="22" font-weight="700" fill="#20252B">Analog colour repair: keep the brightness, rebuild the colour</text>
+  <text x="40" y="78" font-size="14" fill="#5F676D">Luma survives a weak analog signal far better than chroma, and chroma faults rarely hit the same spot in neighbouring frames.</text>
+  <defs>
+    <linearGradient id="rainbow" x1="0" x2="1">
+      <stop offset="0" stop-color="#E5484D"/><stop offset="0.25" stop-color="#F5B83D"/><stop offset="0.5" stop-color="#46A758"/>
+      <stop offset="0.75" stop-color="#3E63DD"/><stop offset="1" stop-color="#8E4EC6"/>
+    </linearGradient>
+    <marker id="tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#9A4100"/></marker>
+  </defs>
+  <!-- seven frames -->
+  <g font-size="12" text-anchor="middle">
+    <rect x="60" y="112" width="120" height="80" rx="8" fill="#7FA36A"/><text x="120" y="212" fill="#5F676D">t − 3</text>
+    <rect x="200" y="112" width="120" height="80" rx="8" fill="#9A9A9A"/><text x="260" y="212" fill="#5F676D">t − 2 · no colour</text>
+    <rect x="340" y="112" width="120" height="80" rx="8" fill="#7FA36A"/><rect x="340" y="140" width="120" height="12" fill="url(#rainbow)"/><text x="400" y="212" fill="#5F676D">t − 1 · hue tear</text>
+    <rect x="520" y="102" width="160" height="100" rx="10" fill="#9A9A9A" stroke="#A64600" stroke-width="4"/><text x="600" y="157" fill="#FFFFFF" font-weight="700" font-size="14">frame t</text><text x="600" y="222" fill="#20252B" font-weight="700">colour dropped</text>
+    <rect x="740" y="112" width="120" height="80" rx="8" fill="#7FA36A"/><text x="800" y="212" fill="#5F676D">t + 1</text>
+    <rect x="880" y="112" width="120" height="80" rx="8" fill="#7FA36A"/><rect x="880" y="168" width="120" height="10" fill="url(#rainbow)"/><text x="940" y="212" fill="#5F676D">t + 2 · hue tear</text>
+    <rect x="1020" y="112" width="120" height="80" rx="8" fill="#7FA36A"/><text x="1080" y="212" fill="#5F676D">t + 3</text>
+  </g>
+  <!-- steps -->
+  <g font-size="13" fill="#20252B">
+    <circle cx="70" cy="262" r="13" fill="#A64600"/><text x="70" y="267" text-anchor="middle" fill="#FFFFFF" font-weight="700">1</text>
+    <text x="92" y="267">Align the six neighbours to frame t with optical flow on their brightness.</text>
+    <circle cx="70" cy="294" r="13" fill="#A64600"/><text x="70" y="299" text-anchor="middle" fill="#FFFFFF" font-weight="700">2</text>
+    <text x="92" y="299">Ignore rows without colour signal and transient hue tears (hue jumping between rows); weight by brightness match.</text>
+    <circle cx="70" cy="326" r="13" fill="#A64600"/><text x="70" y="331" text-anchor="middle" fill="#FFFFFF" font-weight="700">3</text>
+    <text x="92" y="331">Estimate the colour robustly and put it under the untouched brightness of frame t. No usable colour → stays neutral grey.</text>
+  </g>
+</svg>

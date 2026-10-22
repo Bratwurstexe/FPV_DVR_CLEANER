@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+build/
+dist/
+*.spec
+ui_check.png
+signal_check.png
+.scratch/
+
+# .NET build output
+bin/
+obj/
+.vs/

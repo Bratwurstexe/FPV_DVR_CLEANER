@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 330" width="1200" height="330" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="1200" height="330" rx="18" fill="#F7F6F2"/>
+  <text x="40" y="52" font-size="22" font-weight="700" fill="#20252B">How a clip is processed</text>
+  <text x="40" y="78" font-size="14" fill="#5F676D">Every stage works on a short window of frames around the current one; the original audio is copied unchanged.</text>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9A4100"/>
+    </marker>
+  </defs>
+  <g font-size="14">
+    <!-- input -->
+    <rect x="40" y="110" width="130" height="92" rx="12" fill="#22282E"/>
+    <text x="105" y="148" text-anchor="middle" fill="#FFFFFF" font-weight="700">DVR file</text>
+    <text x="105" y="170" text-anchor="middle" fill="#C7CDD2" font-size="12">.ts .mp4 .avi</text>
+    <text x="105" y="187" text-anchor="middle" fill="#C7CDD2" font-size="12">cut in Trim</text>
+    <line x1="172" y1="156" x2="200" y2="156" stroke="#9A4100" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <!-- stages -->
+    <rect x="204" y="110" width="170" height="92" rx="12" fill="#FFFFFF" stroke="#E0B08A" stroke-width="2"/>
+    <text x="289" y="140" text-anchor="middle" fill="#9A4100" font-weight="700" font-size="12">1 · ANALOG</text>
+    <text x="289" y="163" text-anchor="middle" fill="#20252B" font-weight="700">Colour repair</text>
+    <text x="289" y="184" text-anchor="middle" fill="#5F676D" font-size="12">dropouts &amp; hue tears</text>
+    <line x1="376" y1="156" x2="404" y2="156" stroke="#9A4100" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <rect x="408" y="110" width="170" height="92" rx="12" fill="#FFFFFF" stroke="#D5D8D4" stroke-width="2" stroke-dasharray="6 5"/>
+    <text x="493" y="140" text-anchor="middle" fill="#5F676D" font-weight="700" font-size="12">2 · OPTIONAL</text>
+    <text x="493" y="163" text-anchor="middle" fill="#20252B" font-weight="700">Your trained model</text>
+    <text x="493" y="184" text-anchor="middle" fill="#5F676D" font-size="12">or HDZero block repair</text>
+    <line x1="580" y1="156" x2="608" y2="156" stroke="#9A4100" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <rect x="612" y="110" width="170" height="92" rx="12" fill="#FFFFFF" stroke="#E0B08A" stroke-width="2"/>
+    <text x="697" y="140" text-anchor="middle" fill="#9A4100" font-weight="700" font-size="12">3 · OPTIONAL</text>
+    <text x="697" y="163" text-anchor="middle" fill="#20252B" font-weight="700">OSD removal</text>
+    <text x="697" y="184" text-anchor="middle" fill="#5F676D" font-size="12">find &amp; refill overlays</text>
+    <line x1="784" y1="156" x2="812" y2="156" stroke="#9A4100" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <rect x="816" y="110" width="170" height="92" rx="12" fill="#FFFFFF" stroke="#E0B08A" stroke-width="2"/>
+    <text x="901" y="140" text-anchor="middle" fill="#9A4100" font-weight="700" font-size="12">4 · OPTIONAL</text>
+    <text x="901" y="163" text-anchor="middle" fill="#20252B" font-weight="700">Upscaling</text>
+    <text x="901" y="184" text-anchor="middle" fill="#5F676D" font-size="12">1.5× / 2× multi-frame</text>
+    <line x1="988" y1="156" x2="1016" y2="156" stroke="#9A4100" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <rect x="1020" y="110" width="140" height="92" rx="12" fill="#A64600"/>
+    <text x="1090" y="148" text-anchor="middle" fill="#FFFFFF" font-weight="700">MP4 output</text>
+    <text x="1090" y="170" text-anchor="middle" fill="#FFE6D3" font-size="12">H.264 + audio</text>
+    <text x="1090" y="187" text-anchor="middle" fill="#FFE6D3" font-size="12">ETA, cancel</text>
+  </g>
+  <!-- engine / app split -->
+  <rect x="40" y="232" width="1120" height="70" rx="12" fill="#EDEDE8"/>
+  <text x="62" y="262" font-size="13" font-weight="700" fill="#20252B">Desktop app (.NET 8 · Avalonia)</text>
+  <text x="62" y="284" font-size="12" fill="#5F676D">Import · filmstrip trim editor · settings · frame preview · queue · progress</text>
+  <text x="560" y="273" font-size="20" fill="#9A4100" text-anchor="middle">⇄</text>
+  <text x="610" y="262" font-size="13" font-weight="700" fill="#20252B">Video engine (Python · NumPy · OpenCV · FFmpeg)</text>
+  <text x="610" y="284" font-size="12" fill="#5F676D">JSON requests in, progress lines out; all processing stays on your computer</text>
+</svg>

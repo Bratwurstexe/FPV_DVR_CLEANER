@@ -1,0 +1,40 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build: desktop (Debug)",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "${workspaceFolder}/desktop/FpvDvrCleaner.Desktop/FpvDvrCleaner.Desktop.csproj", "-c", "Debug", "-nologo"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "build: desktop (Release, Windows x64)",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["publish", "${workspaceFolder}/desktop/FpvDvrCleaner.Desktop/FpvDvrCleaner.Desktop.csproj",
+               "-c", "Release", "-r", "win-x64", "--self-contained", "true",
+               "-o", "${workspaceFolder}/dist/desktop-win-x64", "-nologo"],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test: engine",
+      "type": "process",
+      "command": "python",
+      "args": ["-m", "unittest", "discover", "-s", "tests", "-v"],
+      "options": { "cwd": "${workspaceFolder}", "env": { "PYTHONPATH": "${workspaceFolder}/src" } },
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "setup: python engine",
+      "type": "process",
+      "command": "python",
+      "args": ["-m", "pip", "install", "-e", "."],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    }
+  ]
+}

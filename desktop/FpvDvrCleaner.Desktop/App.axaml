@@ -1,0 +1,16 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="FpvDvrCleaner.Desktop.App"
+             RequestedThemeVariant="Light">
+    <!-- The studio design is light only. Following a dark system theme would turn
+         text without an explicit colour white on the light cards. -->
+
+    <Application.Styles>
+        <FluentTheme>
+            <FluentTheme.Palettes>
+                <!-- Sliders, check boxes, progress bars and focus use the studio orange. -->
+                <ColorPaletteResources x:Key="Light" Accent="#FFA64600" />
+            </FluentTheme.Palettes>
+        </FluentTheme>
+    </Application.Styles>
+</Application>

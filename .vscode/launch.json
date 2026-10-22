@@ -1,0 +1,50 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Desktop app",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: desktop (Debug)",
+      "program": "${workspaceFolder}/desktop/FpvDvrCleaner.Desktop/bin/Debug/net8.0/FpvDvrCleaner.Desktop.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Desktop app with a clip",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: desktop (Debug)",
+      "program": "${workspaceFolder}/desktop/FpvDvrCleaner.Desktop/bin/Debug/net8.0/FpvDvrCleaner.Desktop.exe",
+      "args": ["${input:clip}"],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole"
+    },
+    {
+      "name": "Engine: unit tests",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "unittest",
+      "args": ["discover", "-s", "tests", "-v"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "justMyCode": true
+    },
+    {
+      "name": "Engine: run one bridge request",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "flugbild.bridge",
+      "args": ["${input:request}"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "justMyCode": true
+    }
+  ],
+  "inputs": [
+    { "id": "clip", "type": "promptString", "description": "Path of a DVR recording to load" },
+    { "id": "request", "type": "promptString", "description": "Path of a JSON request file (see docs/DEVELOPMENT.md)" }
+  ]
+}

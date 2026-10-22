@@ -1,0 +1,90 @@
+name: Desktop builds
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2025
+            rid: win-x64
+          - runner: ubuntu-24.04
+            rid: linux-x64
+          - runner: macos-15
+            rid: osx-arm64
+          - runner: macos-15-intel
+            rid: osx-x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Install FFmpeg on Windows
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg -y --no-progress
+      - name: Install FFmpeg on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install FFmpeg on macOS
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg
+      - name: Test the video engine
+        shell: bash
+        run: |
+          python -m pip install numpy "opencv-python-headless>=4.10,<6"
+          PYTHONPATH=src python -m unittest discover -s tests -v
+      - name: Publish the desktop app
+        run: dotnet publish desktop/FpvDvrCleaner.Desktop/FpvDvrCleaner.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained true -o out/app
+      - name: Add the engine and notices
+        shell: bash
+        run: |
+          mkdir -p out/app/src
+          cp -r src/flugbild out/app/src/flugbild
+          cp pyproject.toml README.md LICENSE THIRD-PARTY-NOTICES.md out/app/
+      - name: Archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path out/app/* -DestinationPath FPV-DVR-Cleaner-${{ matrix.rid }}.zip
+      - name: Archive (Linux, macOS)
+        if: runner.os != 'Windows'
+        run: tar -czf FPV-DVR-Cleaner-${{ matrix.rid }}.tar.gz -C out app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FPV-DVR-Cleaner-${{ matrix.rid }}
+          path: FPV-DVR-Cleaner-${{ matrix.rid }}.*
+          if-no-files-found: error
+
+  draft-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: FPV-DVR-Cleaner-*
+          path: release-assets
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: release-assets/*
+          body: |
+            Desktop builds for Windows, Linux and macOS.
+
+            Requirements: Python 3.10+ with `pip install numpy opencv-python-headless`,
+            and FFmpeg/ffprobe on PATH. See README and THIRD-PARTY-NOTICES.
