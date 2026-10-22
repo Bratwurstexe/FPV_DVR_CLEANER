@@ -13,9 +13,13 @@ Removes rainbow stripes and black-and-white dropouts, paints out the OSD and ups
 [![Status](https://img.shields.io/badge/status-first%20release-F08A3A)](docs/STATUS.md)
 [![Stars](https://img.shields.io/github/stars/Bratwurstexe/FPV_DVR_CLEANER?style=flat&color=A64600)](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/stargazers)
 
+[![Download the latest release](https://img.shields.io/github/v/release/Bratwurstexe/FPV_DVR_CLEANER?label=Download&style=for-the-badge&color=A64600)](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest)
+
+**[⬇ Download for Windows, macOS and Linux](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest)**: ready to run, no Python or FFmpeg setup.
+
 ![One frame, left half original, right half cleaned](docs/media/hero-split.jpg)
 
-[Features](#features) · [Before / after](#before-and-after) · [How it works](#how-it-works) · [Workflow](#the-workflow) · [Getting started](#getting-started) · [Coming soon](#coming-soon) · [Licence](#licence)
+[Download](#download) · [Features](#features) · [Before / after](#before-and-after) · [How it works](#how-it-works) · [Workflow](#the-workflow) · [Getting started](#getting-started) · [Coming soon](#coming-soon) · [Licence](#licence)
 
 </div>
 
@@ -109,7 +113,20 @@ The output is H.264 MP4 with the original audio. Results are written to a tempor
 
 ## Getting started
 
-### Requirements
+### Download
+
+Get the package for your system from the **[latest release](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest)**. It contains the app, the video engine and FFmpeg. Unpack it and start it; nothing else has to be installed.
+
+| System | File | Start |
+|---|---|---|
+| Windows 10/11 (64-bit) | `FPV-DVR-Cleaner-…-windows-x64.zip` | `FpvDvrCleaner.Desktop.exe` |
+| macOS, Apple Silicon | `FPV-DVR-Cleaner-…-macos-apple-silicon.zip` | `FPV DVR Cleaner.app` |
+| macOS, Intel | `FPV-DVR-Cleaner-…-macos-intel.zip` | `FPV DVR Cleaner.app` |
+| Linux (x64) | `FPV-DVR-Cleaner-…-linux-x64.tar.gz` | `./FpvDvrCleaner.Desktop` |
+
+On Windows, SmartScreen may warn about an unknown publisher: choose *More info → Run anyway*. On macOS the app is not notarised: right-click it and choose *Open* the first time.
+
+### Requirements (run from source)
 
 - Windows 10/11, Linux or macOS
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (to build the app)
@@ -144,7 +161,7 @@ The [build workflow](.github/workflows/build.yml) produces packages for Windows,
 
 - [ ] **AI HD upscaling:** a neural super-resolution model trained for FPV footage, as an option next to multi-frame upscaling
 - [ ] GPU acceleration for faster exports
-- [ ] Ready-to-run packages that include the engine (no Python setup)
+- [x] Ready-to-run packages that include the engine (no Python setup)
 - [ ] Better HDZero repair for long breakups across several frames
 - [ ] Presets per goggles and receiver
 - [ ] German user interface

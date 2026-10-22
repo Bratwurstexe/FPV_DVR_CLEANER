@@ -21,7 +21,7 @@
 1. **Product name.** Another project, kept in `X:\DVR Tools`, also uses the name "FPV DVR Cleaner". The GitHub repository `Bratwurstexe/FPV_DVR_CLEANER` now holds only this project (`main`), but a distinct product name would avoid confusion.
 2. **Licence holder.** `LICENSE` names "FPV DVR Cleaner contributors". Replace this with the holder you want named.
 3. **Footage in docs/media.** The GIFs and stills use the owner's own recordings, chosen from scenes without people.
-4. **Packaging.** Releases still need Python, NumPy, OpenCV and FFmpeg installed by the user. A bundled engine is on the roadmap.
+4. **Packaging.** The build workflow packages the app, the frozen engine and FFmpeg (GPL build with x264) for Windows, Linux and macOS, and publishes them as a GitHub release from a `v*` tag. Tag `v0.1.0` predates this workflow, so a new tag is needed for the first release with packages.
 5. **Speed.** Export is CPU-bound, at several seconds per second of video with all options on. The frame preview takes about 10 s.
 6. **Legacy Qt prototype.** `window.py`, `cutroom.py`, `__main__.py`, `launch_flugbild.py`, `tests/test_queue.py`, the old `dist/` and `build/` output, the `.spec` files and `docs/ui-preview.png` / `docs/signal-preview.png` are no longer needed by the .NET app.
 7. **Testing on Linux and macOS.** Builds are configured but have not been run.

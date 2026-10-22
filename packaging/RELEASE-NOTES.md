@@ -18,4 +18,4 @@ Ready-to-run builds: unpack and start. The app, the video engine and FFmpeg are 
 - Upscales to 1.5× (1080p) or 2×.
 - Includes a filmstrip trim editor, a frame preview, and a batch export with live remaining time.
 
-All processing stays on your computer. The application code is MIT licensed. The bundled components keep their own licences: Avalonia (MIT), NumPy (BSD), OpenCV (Apache-2.0) and FFmpeg (LGPL on Windows/Linux, GPL on macOS). See `THIRD-PARTY-NOTICES.md` and `ffmpeg/FFMPEG-LICENSE.txt` in the package.
+All processing stays on your computer. The application code is MIT licensed. The bundled components keep their own licences: Avalonia (MIT), NumPy (BSD), OpenCV (Apache-2.0) and FFmpeg (GPL, a separate program in the `ffmpeg` folder; source at https://ffmpeg.org/download.html). See `THIRD-PARTY-NOTICES.md` and `ffmpeg/FFMPEG-LICENSE.txt` in the package.
