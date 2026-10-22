@@ -1,0 +1,24 @@
+FPV DVR Cleaner
+===============
+
+Everything needed is in this folder: the app, the video engine and FFmpeg.
+Nothing else has to be installed.
+
+Start
+-----
+Windows : double-click FpvDvrCleaner.Desktop.exe
+          (SmartScreen may ask once: "More info" -> "Run anyway")
+Linux   : ./FpvDvrCleaner.Desktop
+macOS   : open "FPV DVR Cleaner.app"
+          The app is not notarised. The first time, right-click it and choose
+          "Open", or run:  xattr -cr "FPV DVR Cleaner.app"
+
+Use
+---
+1 Import  - drop your DVR recordings into the window
+2 Trim    - mark start and end on the filmstrip (I / O keys)
+3 Repair  - choose the fixes and press "Render this frame" to check
+4 Export  - choose a folder and start; remaining time is shown live
+
+Help and source code: https://github.com/Bratwurstexe/FPV_DVR_CLEANER
+Licences of the included components: THIRD-PARTY-NOTICES.md and ffmpeg/FFMPEG-LICENSE.txt

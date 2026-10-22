@@ -111,22 +111,50 @@ public partial class MainWindow : Window
         return folder;
     }
 
+    /// <summary>The engine shipped inside a release build, if present.</summary>
+    private static string? BundledEngine()
+    {
+        var name = OperatingSystem.IsWindows() ? "flugbild-engine.exe" : "flugbild-engine";
+        var path = System.IO.Path.Combine(AppContext.BaseDirectory, "engine", name);
+        return File.Exists(path) ? path : null;
+    }
+
+    private static ProcessStartInfo EngineStart(string ticket)
+    {
+        ProcessStartInfo start;
+        if (BundledEngine() is { } engine)
+        {
+            // Release build: frozen engine plus FFmpeg next to the app, no Python needed.
+            start = new ProcessStartInfo(engine) { WorkingDirectory = AppContext.BaseDirectory };
+            var tools = System.IO.Path.Combine(AppContext.BaseDirectory, "ffmpeg");
+            if (Directory.Exists(tools))
+                start.Environment["PATH"] = tools + System.IO.Path.PathSeparator + Environment.GetEnvironmentVariable("PATH");
+        }
+        else
+        {
+            var root = RepoRoot();
+            start = new ProcessStartInfo("python") { WorkingDirectory = root };
+            start.Environment["PYTHONPATH"] = System.IO.Path.Combine(root, "src");
+            start.ArgumentList.Add("-m"); start.ArgumentList.Add("flugbild.bridge");
+        }
+        start.ArgumentList.Add(ticket);
+        start.RedirectStandardOutput = true; start.RedirectStandardError = true;
+        start.UseShellExecute = false; start.CreateNoWindow = true;
+        start.StandardOutputEncoding = System.Text.Encoding.UTF8; start.StandardErrorEncoding = System.Text.Encoding.UTF8;
+        // Without this, Windows Python writes the ANSI code page and umlauts in
+        // file names or FFmpeg messages arrive as garbled characters.
+        start.Environment["PYTHONIOENCODING"] = "utf-8";
+        return start;
+    }
+
     private static async Task<JsonElement> EngineAsync(object request, Action<JsonElement>? progress = null,
         CancellationToken cancellation = default)
     {
-        var root = RepoRoot();
         var ticket = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"fpv-task-{Guid.NewGuid():N}.json");
         await File.WriteAllTextAsync(ticket, JsonSerializer.Serialize(request), cancellation);
         try
         {
-            var start = new ProcessStartInfo("python") { WorkingDirectory = root, RedirectStandardOutput = true,
-                RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true,
-                StandardOutputEncoding = System.Text.Encoding.UTF8, StandardErrorEncoding = System.Text.Encoding.UTF8 };
-            start.Environment["PYTHONPATH"] = System.IO.Path.Combine(root, "src");
-            // Without this, Windows Python writes the ANSI code page and umlauts in
-            // file names or FFmpeg messages arrive as garbled characters.
-            start.Environment["PYTHONIOENCODING"] = "utf-8";
-            start.ArgumentList.Add("-m"); start.ArgumentList.Add("flugbild.bridge"); start.ArgumentList.Add(ticket);
+            var start = EngineStart(ticket);
             using var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start video engine");
             using var killOnCancel = cancellation.Register(() =>
             {

@@ -1,10 +1,12 @@
 name: Desktop builds
 
+# Builds ready-to-run packages: desktop app, frozen video engine and FFmpeg.
+# Pushes to main build and test; a version tag (v*) also publishes a release.
 on:
   workflow_dispatch:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
+    tags: ['v*']
 
 permissions:
   contents: read
@@ -17,13 +19,20 @@ jobs:
         include:
           - runner: windows-2025
             rid: win-x64
+            ffmpeg: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl.zip
           - runner: ubuntu-24.04
             rid: linux-x64
+            ffmpeg: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-lgpl.tar.xz
           - runner: macos-15
             rid: osx-arm64
+            ffmpeg: https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release
           - runner: macos-15-intel
             rid: osx-x64
+            ffmpeg: https://ffmpeg.martin-riedl.de/redirect/latest/macos/amd64/release
     runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -32,48 +41,114 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - name: Install FFmpeg on Windows
-        if: runner.os == 'Windows'
-        run: choco install ffmpeg -y --no-progress
-      - name: Install FFmpeg on Linux
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - name: Install FFmpeg on macOS
-        if: runner.os == 'macOS'
-        run: brew install ffmpeg
+
+      - name: Download FFmpeg
+        run: |
+          mkdir -p ffmpeg-bundle ffmpeg-download
+          case "${{ matrix.rid }}" in
+            win-x64)
+              curl -sSL -o ffmpeg-download/ff.zip "${{ matrix.ffmpeg }}"
+              unzip -q ffmpeg-download/ff.zip -d ffmpeg-download
+              cp ffmpeg-download/*/bin/ffmpeg.exe ffmpeg-download/*/bin/ffprobe.exe ffmpeg-bundle/
+              cp ffmpeg-download/*/LICENSE.txt ffmpeg-bundle/FFMPEG-LICENSE.txt ;;
+            linux-x64)
+              curl -sSL -o ffmpeg-download/ff.tar.xz "${{ matrix.ffmpeg }}"
+              tar -xf ffmpeg-download/ff.tar.xz -C ffmpeg-download
+              cp ffmpeg-download/*/bin/ffmpeg ffmpeg-download/*/bin/ffprobe ffmpeg-bundle/
+              cp ffmpeg-download/*/LICENSE.txt ffmpeg-bundle/FFMPEG-LICENSE.txt ;;
+            osx-*)
+              for tool in ffmpeg ffprobe; do
+                curl -sSL -o "ffmpeg-download/$tool.zip" "${{ matrix.ffmpeg }}/$tool.zip"
+                unzip -q -o "ffmpeg-download/$tool.zip" -d ffmpeg-bundle
+              done
+              printf '%s\n' "Static FFmpeg build from https://ffmpeg.martin-riedl.de (GPL)." \
+                "Source code: https://ffmpeg.org/download.html" > ffmpeg-bundle/FFMPEG-LICENSE.txt ;;
+          esac
+          chmod +x ffmpeg-bundle/ffmpeg* ffmpeg-bundle/ffprobe* || true
+          ffmpeg-bundle/ffmpeg -hide_banner -version | head -1
+          echo "$PWD/ffmpeg-bundle" >> "$GITHUB_PATH"
+
+      - name: Install the engine dependencies
+        run: python -m pip install "numpy>=2,<3" "opencv-python-headless>=4.10,<6" "pyinstaller>=6.10"
+
       - name: Test the video engine
-        shell: bash
         run: |
-          python -m pip install numpy "opencv-python-headless>=4.10,<6"
-          PYTHONPATH=src python -m unittest discover -s tests -v
+          set +e
+          PYTHONPATH=src python -m unittest discover -s tests -v > test-output.txt 2>&1
+          status=$?
+          cat test-output.txt
+          if [ $status -ne 0 ]; then
+            # Annotations are readable without signing in, unlike raw logs.
+            grep -E "^(FAIL|ERROR):|Error|assert" test-output.txt | head -15 | while read -r line; do
+              echo "::error title=Engine test on ${{ matrix.rid }}::$line"
+            done
+            tail -25 test-output.txt | tr '\n' '|' | sed 's/^/::error title=Test output tail::/'; echo
+          fi
+          exit $status
+
+      - name: Freeze the video engine
+        run: |
+          python -m PyInstaller --noconfirm --clean --onedir --console --name flugbild-engine \
+            --paths src --collect-data flugbild --exclude-module PySide6 --exclude-module tkinter \
+            --distpath engine-dist --workpath engine-build packaging/engine_entry.py
+
       - name: Publish the desktop app
-        run: dotnet publish desktop/FpvDvrCleaner.Desktop/FpvDvrCleaner.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained true -o out/app
-      - name: Add the engine and notices
-        shell: bash
+        run: dotnet publish desktop/FpvDvrCleaner.Desktop/FpvDvrCleaner.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained true -p:DebugType=none -o app
+
+      - name: Assemble the package
         run: |
-          mkdir -p out/app/src
-          cp -r src/flugbild out/app/src/flugbild
-          cp pyproject.toml README.md LICENSE THIRD-PARTY-NOTICES.md out/app/
+          cp -r engine-dist/flugbild-engine app/engine
+          mkdir -p app/ffmpeg && cp ffmpeg-bundle/* app/ffmpeg/
+          cp README.md LICENSE THIRD-PARTY-NOTICES.md app/
+          cp packaging/START-HERE.txt app/
+          chmod +x app/FpvDvrCleaner.Desktop app/engine/flugbild-engine 2>/dev/null || true
+          # Smoke test: the frozen engine answers a request with the bundled FFmpeg.
+          PATH="$PWD/app/ffmpeg:$PATH" ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc2=size=160x96:rate=10 -t 1 -pix_fmt yuv420p smoke.mp4
+          printf '{"action":"inspect","source":"%s"}' "$PWD/smoke.mp4" > smoke.json
+          engine=app/engine/flugbild-engine; [ -f "$engine.exe" ] && engine="$engine.exe"
+          PATH="$PWD/app/ffmpeg:$PATH" "$engine" smoke.json | tee smoke.out
+          grep -q '"result"' smoke.out
+
       - name: Archive (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: Compress-Archive -Path out/app/* -DestinationPath FPV-DVR-Cleaner-${{ matrix.rid }}.zip
-      - name: Archive (Linux, macOS)
-        if: runner.os != 'Windows'
-        run: tar -czf FPV-DVR-Cleaner-${{ matrix.rid }}.tar.gz -C out app
+        run: |
+          Rename-Item app "FPV-DVR-Cleaner"
+          Compress-Archive -Path "FPV-DVR-Cleaner" -DestinationPath "FPV-DVR-Cleaner-${{ github.ref_name }}-windows-x64.zip"
+
+      - name: Archive (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mv app FPV-DVR-Cleaner
+          tar -czf "FPV-DVR-Cleaner-${{ github.ref_name }}-linux-x64.tar.gz" FPV-DVR-Cleaner
+
+      - name: Build the app bundle (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          bundle="FPV DVR Cleaner.app"
+          mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
+          cp -R app/. "$bundle/Contents/MacOS/"
+          cp desktop/FpvDvrCleaner.Desktop/Assets/app.png "$bundle/Contents/Resources/app.png"
+          sed "s/@VERSION@/${{ github.ref_name }}/" packaging/Info.plist > "$bundle/Contents/Info.plist"
+          # Ad-hoc signature so Apple Silicon starts the binaries; not notarised.
+          codesign --force --deep --sign - "$bundle" || true
+          arch=$([ "${{ matrix.rid }}" = osx-arm64 ] && echo apple-silicon || echo intel)
+          ditto -c -k --keepParent "$bundle" "FPV-DVR-Cleaner-${{ github.ref_name }}-macos-$arch.zip"
+
       - uses: actions/upload-artifact@v4
         with:
           name: FPV-DVR-Cleaner-${{ matrix.rid }}
-          path: FPV-DVR-Cleaner-${{ matrix.rid }}.*
+          path: FPV-DVR-Cleaner-*.*
           if-no-files-found: error
 
-  draft-release:
+  release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: package
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           pattern: FPV-DVR-Cleaner-*
@@ -81,10 +156,6 @@ jobs:
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
-          draft: true
+          name: FPV DVR Cleaner ${{ github.ref_name }}
+          body_path: packaging/RELEASE-NOTES.md
           files: release-assets/*
-          body: |
-            Desktop builds for Windows, Linux and macOS.
-
-            Requirements: Python 3.10+ with `pip install numpy opencv-python-headless`,
-            and FFmpeg/ffprobe on PATH. See README and THIRD-PARTY-NOTICES.
