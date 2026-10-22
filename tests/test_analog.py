@@ -7,9 +7,13 @@ from flugbild.analog import repair_stream
 
 
 def moving_scene(count: int) -> list[np.ndarray]:
+    """Fine brightness detail with coarse colour areas, like a real analog picture."""
     random = np.random.default_rng(5)
-    base = cv2.resize(random.integers(40, 220, size=(24, 40, 3), dtype=np.uint8), (320, 192),
+    luma = cv2.resize(random.integers(50, 200, size=(24, 40), dtype=np.uint8), (320, 192),
                       interpolation=cv2.INTER_CUBIC)
+    colour = cv2.resize(random.integers(70, 186, size=(5, 8, 2), dtype=np.uint8), (320, 192),
+                        interpolation=cv2.INTER_CUBIC)
+    base = cv2.cvtColor(np.dstack([luma, colour]), cv2.COLOR_YCrCb2BGR)
     wide = cv2.copyMakeBorder(base, 0, 0, 0, 40, cv2.BORDER_REFLECT)
     return [wide[:, 2 * index:2 * index + 320].copy() for index in range(count)]
 

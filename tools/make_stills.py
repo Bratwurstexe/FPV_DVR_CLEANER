@@ -59,9 +59,11 @@ def tag(image: np.ndarray, text: str, right: bool = False, accent: bool = False)
     cv2.putText(image, text, (x, y), cv2.FONT_HERSHEY_DUPLEX, scale, (255, 255, 255), thick, cv2.LINE_AA)
 
 
-def showcase(before: list[np.ndarray], after: list[np.ndarray], target: Path, title: str) -> tuple[np.ndarray, np.ndarray]:
-    scores = [float(change(b, a).mean()) for b, a in zip(before, after)]
-    pick = int(np.argmax(scores[2:-2])) + 2 if len(scores) > 4 else int(np.argmax(scores))
+def showcase(before: list[np.ndarray], after: list[np.ndarray], target: Path, title: str,
+             pick: int | None = None) -> tuple[np.ndarray, np.ndarray]:
+    if pick is None:
+        scores = [float(change(b, a).mean()) for b, a in zip(before, after)]
+        pick = int(np.argmax(scores[2:-2])) + 2 if len(scores) > 4 else int(np.argmax(scores))
     left, right = picture_area(before[pick]).copy(), picture_area(after[pick]).copy()
     height, width = left.shape[:2]
     # Detail: the window with the largest summed change, away from the frame edge.
@@ -97,10 +99,13 @@ def hero(before: np.ndarray, after: np.ndarray, target: Path) -> None:
     cv2.imwrite(str(target), mix, [cv2.IMWRITE_JPEG_QUALITY, 90])
 
 
+# Clips where the frame with the largest change is not representative.
+MOMENT = {"c_osd_removed": 3.3}
+
 TITLES = {
-    "a_harburg_colour": "Colour dropouts, colour noise and grain",
+    "a_harburg_colour": "Colour noise, rainbow streaks and grain",
     "b_bremerhaven_rainbow": "Rainbow stripes from a disturbed colour carrier",
-    "c_osd_removed": "OSD removal, including a short LAND NOW warning",
+    "c_osd_removed": "OSD removal: text, icons and bars",
     "d_upscaled": "Multi-frame upscaling to 1080p with noise reduction",
 }
 
@@ -120,7 +125,13 @@ def main() -> None:
         before = frames(original, (after[0].shape[1], after[0].shape[0]))
         count = min(len(before), len(after))
         target = args.output / f"{cleaned.stem.split('_', 1)[1].replace('_', '-')}-before-after.jpg"
-        pair = showcase(before[:count], after[:count], target, TITLES.get(cleaned.stem, cleaned.stem))
+        rate = (subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                                         "stream=r_frame_rate", "-of", "csv=p=0", str(cleaned)],
+                                        capture_output=True, text=True).stdout.strip() or "0/1").split("/")
+        fps = float(rate[0]) / float(rate[1]) if float(rate[1]) else 0.0
+        moment = MOMENT.get(cleaned.stem)
+        pick = min(count - 1, round(moment * fps)) if moment is not None and fps else None
+        pair = showcase(before[:count], after[:count], target, TITLES.get(cleaned.stem, cleaned.stem), pick)
         print(target, target.stat().st_size // 1024, "KiB")
         if not made_hero:
             hero(*pair, args.output / "hero-split.jpg")

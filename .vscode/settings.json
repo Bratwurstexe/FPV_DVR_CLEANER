@@ -1,0 +1,21 @@
+{
+  // Large local folders (test footage, old builds, .NET output) are neither
+  // watched nor searched; this keeps the editor responsive.
+  "files.watcherExclude": {
+    "**/.scratch/**": true,
+    "**/dist/**": true,
+    "**/build/**": true,
+    "**/bin/**": true,
+    "**/obj/**": true,
+    "**/__pycache__/**": true
+  },
+  "search.exclude": {
+    "**/.scratch": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/bin": true,
+    "**/obj": true
+  },
+  "python.analysis.exclude": ["**/.scratch", "**/dist", "**/build", "**/bin", "**/obj"],
+  "python.analysis.extraPaths": ["src"]
+}

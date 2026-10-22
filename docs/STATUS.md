@@ -18,9 +18,9 @@
 
 ## Open before a public release
 
-1. **Product name and repository.** The same name, "FPV DVR Cleaner", is used by another project. That project's local copy also points to the same GitHub repository URL (`Bratwurstexe/FPV_DVR_CLEANER`, branch `public-release`). Decide the name and the target repository before publishing.
+1. **Product name.** Another project, kept in `X:\DVR Tools`, also uses the name "FPV DVR Cleaner". The GitHub repository `Bratwurstexe/FPV_DVR_CLEANER` now holds only this project (`main`), but a distinct product name would avoid confusion.
 2. **Licence holder.** `LICENSE` names "FPV DVR Cleaner contributors". Replace this with the holder you want named.
-3. **Footage in docs/media.** The GIFs and screenshots use the owner's own recordings. Check that you are happy to publish them; one recording shows a person at a distance.
+3. **Footage in docs/media.** The GIFs and stills use the owner's own recordings, chosen from scenes without people.
 4. **Packaging.** Releases still need Python, NumPy, OpenCV and FFmpeg installed by the user. A bundled engine is on the roadmap.
 5. **Speed.** Export is CPU-bound, at several seconds per second of video with all options on. The frame preview takes about 10 s.
 6. **Legacy Qt prototype.** `window.py`, `cutroom.py`, `__main__.py`, `launch_flugbild.py`, `tests/test_queue.py`, the old `dist/` and `build/` output, the `.spec` files and `docs/ui-preview.png` / `docs/signal-preview.png` are no longer needed by the .NET app.

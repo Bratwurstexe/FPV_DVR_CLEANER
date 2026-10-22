@@ -149,6 +149,25 @@ def _luma_guided(chroma: np.ndarray, luma: np.ndarray, doubt: np.ndarray) -> np.
     return predicted * coverage
 
 
+def _follow_luma(chroma: np.ndarray, luma: np.ndarray, amount: float) -> np.ndarray:
+    """Edge-aware chroma smoothing guided by luma (local linear guided filter)."""
+    radius = (4, 2)  # the repair grid is already 4x coarser horizontally, 2x vertically
+    eps = 20.0 + 120.0 * amount
+
+    def box(values: np.ndarray) -> np.ndarray:
+        return cv2.blur(values, (2 * radius[0] + 1, 2 * radius[1] + 1))
+
+    light = box(luma)
+    spread = box(luma * luma) - light * light
+    smoothed = np.zeros_like(chroma)
+    for part, unit in ((chroma.real.astype(np.float32), 1), (chroma.imag.astype(np.float32), 1j)):
+        colour = box(part)
+        slope = (box(luma * part) - light * colour) / (spread + eps)
+        offset = colour - slope * light
+        smoothed += unit * (box(slope) * luma + box(offset))
+    return chroma + (smoothed - chroma) * (0.6 * amount)
+
+
 def repair_window(aligner: _Aligner, window: list[_FrameData], center: int,
                   amount: int, overlay: np.ndarray) -> np.ndarray:
     """Return the repaired BGR frame for ``window[center]``.
@@ -197,6 +216,9 @@ def repair_window(aligner: _Aligner, window: list[_FrameData], center: int,
     stray = np.clip((np.abs(present.chroma - estimate) - 8) / 12, 0, 1) * backing
     calming = amount / 100 * 0.9 * np.minimum(prior[1:].sum(axis=0) / 2, 1)
     strength = np.maximum(np.maximum(drained, stray), np.maximum(own_tears, calming))
+    # Pixel-by-pixel decisions leave blotches where neighbouring pixels were
+    # treated differently; let the repair fade in and out over an area.
+    strength = np.maximum(strength, cv2.GaussianBlur(strength, (0, 0), 6) * 0.9).astype(np.float32)
     change = (goal - present.chroma) * strength
     # Bands that keep reappearing at the same edge survive the temporal step;
     # catch them in the repaired frame by their missing brightness edge.
@@ -204,6 +226,11 @@ def repair_window(aligner: _Aligner, window: list[_FrameData], center: int,
     bands = _unbacked_bands(repaired, present.luma) * (1 - overlay)
     if bands.max() > 0.05:
         change += (_luma_guided(repaired, present.luma, bands) - repaired) * bands
+    if amount:
+        # Colour carries little detail of its own in an analog signal: let it
+        # follow the brightness contours, which survive the transmission.
+        settled = _follow_luma(present.chroma + change, present.luma, amount / 100)
+        change = settled - present.chroma
     height, width = present.ycc.shape[:2]
     planes = cv2.resize(np.dstack([change.real, change.imag]).astype(np.float32),
                         (width, height), interpolation=cv2.INTER_LINEAR)

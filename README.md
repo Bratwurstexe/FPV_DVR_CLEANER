@@ -13,7 +13,7 @@ Removes rainbow stripes and black-and-white dropouts, paints out the OSD and ups
 [![Status](https://img.shields.io/badge/status-first%20release-F08A3A)](docs/STATUS.md)
 [![Stars](https://img.shields.io/github/stars/Bratwurstexe/FPV_DVR_CLEANER?style=flat&color=A64600)](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/stargazers)
 
-![Analog dropouts repaired: original left, cleaned right](docs/media/analog-dropouts.gif)
+![One frame, left half original, right half cleaned](docs/media/hero-split.jpg)
 
 [Features](#features) · [Before / after](#before-and-after) · [How it works](#how-it-works) · [Workflow](#the-workflow) · [Getting started](#getting-started) · [Coming soon](#coming-soon) · [Licence](#licence)
 
@@ -36,13 +36,23 @@ Removes rainbow stripes and black-and-white dropouts, paints out the OSD and ups
 
 ## Before and after
 
-All examples are real DVR recordings. Left is the original, right is the result. Only the 4:3 picture area is shown.
+All examples are real analog DVR recordings. Each image shows the full 4:3 picture and, below it, the marked area enlarged 2x.
 
-| Rainbow stripes | OSD removal |
+![Colour noise, rainbow streaks and grain](docs/media/harburg-colour-before-after.jpg)
+
+![Rainbow stripes from a disturbed colour carrier](docs/media/bremerhaven-rainbow-before-after.jpg)
+
+![OSD removal](docs/media/osd-removed-before-after.jpg)
+
+![Multi-frame upscaling to 1080p](docs/media/upscaled-before-after.jpg)
+
+### In motion
+
+| Colour noise and streaks | Rainbow stripes |
 |---|---|
-| ![Rainbow stripes removed](docs/media/analog-rainbow.gif) | ![OSD removed](docs/media/osd-removal.gif) |
-| **Colour dropouts and noise** | **1.5× upscaling (detail crop)** |
-| ![Black-and-white dropouts repaired](docs/media/analog-dropouts.gif) | ![Upscaling detail](docs/media/upscaling.gif) |
+| ![Colour noise repaired](docs/media/analog-dropouts.gif) | ![Rainbow stripes removed](docs/media/analog-rainbow.gif) |
+| **OSD removal** | **1.5x upscaling (detail)** |
+| ![OSD removed](docs/media/osd-removal.gif) | ![Upscaling detail](docs/media/upscaling.gif) |
 
 ## How it works
 
@@ -61,6 +71,8 @@ A weak analog signal damages colour far more than brightness, and the damage cha
 - **Colour dropout:** a row with practically no colour signal is recognised by an absolute chroma level. A truly grey scene simply stays grey.
 - **Hue tears (rainbow stripes):** saturated colour whose hue jumps from one row to the next. Only *transient* jumps count. An edge that shows the same jump in the neighbouring frames, such as a red roof against the sky or a coloured OSD bar, is part of the picture.
 - **Estimate:** three earlier and three later frames are aligned with optical flow and weighted by how well their brightness matches. The colour is then estimated with a robust (Cauchy) average. If no neighbour has usable colour, the result fades to neutral grey instead of copying a stripe.
+- **Lasting bands:** a stripe that returns at the same place in several frames is caught by its edges: a colour edge without a matching brightness edge. There the colour is refilled from a local brightness-to-colour model.
+- **Settle:** finally the colour is smoothed with a filter guided by the brightness, so it follows the contours that survived the transmission instead of speckling.
 
 ### 2 · Optional model / HDZero block repair
 
