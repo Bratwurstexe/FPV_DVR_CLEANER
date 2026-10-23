@@ -261,7 +261,8 @@ def process_temporal(source: Path, target: Path, recipe: Arbeitsrezept, info: Vi
     ffmpeg_args.extend(["-shortest", str(pending)])
     log = tempfile.TemporaryFile(mode="w+b")
     decoder_log = tempfile.TemporaryFile(mode="w+b")
-    workplace = Path(workspace.name) if workspace else Path(__file__).parent / "assets"
+    # Only the caption filter needs a working directory (relative font and text paths).
+    workplace = workspace.name if workspace else None
     decoder = None
     encoder = None
     try:

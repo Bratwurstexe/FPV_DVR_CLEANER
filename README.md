@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> **Important bug fixed: saving the export.** In the first release packages every export failed with
+> `[WinError 267] The directory name is invalid` ("Der Verzeichnisname ist ungültig"), no matter which folder was chosen.
+> This is fixed. Please download the latest package.
+
 <div align="center">
 
 # FPV DVR Cleaner

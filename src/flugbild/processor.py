@@ -131,7 +131,8 @@ def process_one(source: Path, target: Path, recipe: Arbeitsrezept, info: VideoKe
             workspace.cleanup()
         raise
     args[-1] = str(pending)
-    workplace = Path(workspace.name) if workspace else Path(__file__).parent / "assets"
+    # Only the caption filter needs a working directory (relative font and text paths).
+    workplace = workspace.name if workspace else None
     log = tempfile.TemporaryFile(mode="w+b")
     try:
         proc = subprocess.Popen(args, cwd=workplace,

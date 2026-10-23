@@ -89,7 +89,7 @@ jobs:
       - name: Freeze the video engine
         run: |
           python -m PyInstaller --noconfirm --clean --onedir --console --name flugbild-engine \
-            --paths src --collect-data flugbild --exclude-module PySide6 --exclude-module tkinter \
+            --paths src --add-data "src/flugbild/assets:flugbild/assets" --exclude-module PySide6 --exclude-module tkinter \
             --distpath engine-dist --workpath engine-build packaging/engine_entry.py
 
       - name: Publish the desktop app
