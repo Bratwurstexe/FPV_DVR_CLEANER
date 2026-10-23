@@ -12,6 +12,11 @@ Clean up analog and HDZero DVR recordings on your own computer: rainbow stripes,
 
 `SHA256SUMS.txt` lists the checksum of every package.
 
+## New in 0.4.1
+
+**Important bug fixed: saving the export**
+- Exports could fail with `[WinError 267] The directory name is invalid` ("Der Verzeichnisname ist ungültig"), no matter which destination folder was chosen. The video engine started FFmpeg in a folder that was missing from the packages. Exports work again, with or without a caption.
+
 ## New in 0.4.0
 
 **CPU and GPU together**
