@@ -654,7 +654,22 @@ public partial class MainWindow : Window
         if (NoiseSlider.Value > 0) parts.Add("denoised");
         if (RemoveOsd.IsChecked == true) parts.Add("OSD removed");
         if (SizePercent != 100) parts.Add((SizePercent / 100.0).ToString("0.#", CultureInfo.InvariantCulture) + "×");
+        if (Effort != "balanced") parts.Add(Effort);
         CleanHint.Text = string.Join(" · ", parts);
+    }
+
+    private string Effort => EffortFast?.IsChecked == true ? "fast" : EffortBest?.IsChecked == true ? "best" : "balanced";
+
+    private void Effort_Changed(object? sender, RoutedEventArgs e)
+    {
+        if (EffortNote == null) return;
+        EffortNote.Text = Effort switch
+        {
+            "fast" => "Quickest export. Fewer neighbouring frames and coarser motion; fine for sharing and checking a flight.",
+            "best" => "Most neighbouring frames and the finest motion. Takes the longest; for the final cut.",
+            _ => "Recommended. Nearly the quality of Best in clearly less time.",
+        };
+        UpdateCleanHint();
     }
 
     private void Mode_Changed(object? sender, SelectionChangedEventArgs e)
@@ -677,6 +692,7 @@ public partial class MainWindow : Window
         dateiziel_mb = (int)(SizeCap.Value ?? 0),
         osd_entfernen = RemoveOsd.IsChecked == true,
         rauschminderung = (int)NoiseSlider.Value,
+        aufwand = Effort,
     };
 
     private string Mode => ModeChoice.SelectedIndex == 1 ? "model" : "manual";

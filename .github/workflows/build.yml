@@ -133,7 +133,8 @@ jobs:
           mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
           cp -R app/. "$bundle/Contents/MacOS/"
           cp desktop/FpvDvrCleaner.Desktop/Assets/app.png "$bundle/Contents/Resources/app.png"
-          sed "s/@VERSION@/${{ github.ref_name }}/" packaging/Info.plist > "$bundle/Contents/Info.plist"
+          version="${{ github.ref_name }}"
+          sed "s/@VERSION@/${version#v}/" packaging/Info.plist > "$bundle/Contents/Info.plist"
           # Ad-hoc signature so Apple Silicon starts the binaries; not notarised.
           codesign --force --deep --sign - "$bundle" || true
           arch=$([ "${{ matrix.rid }}" = osx-arm64 ] && echo apple-silicon || echo intel)
@@ -158,8 +159,12 @@ jobs:
           pattern: FPV-DVR-Cleaner-*
           path: release-assets
           merge-multiple: true
+      - name: Checksums
+        run: cd release-assets && sha256sum FPV-DVR-Cleaner-* > SHA256SUMS.txt && cat SHA256SUMS.txt
+      # GitHub adds the source code (zip and tar.gz) to every release by itself.
       - uses: softprops/action-gh-release@v2
         with:
           name: FPV DVR Cleaner ${{ github.ref_name }}
           body_path: packaging/RELEASE-NOTES.md
           files: release-assets/*
+          make_latest: true

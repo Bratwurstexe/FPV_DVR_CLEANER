@@ -27,15 +27,32 @@ def flight_with_osd(count: int) -> tuple[list[np.ndarray], np.ndarray, list[np.n
 class OsdTest(unittest.TestCase):
     def test_static_text_is_found_and_removed(self):
         frames, text, scene = flight_with_osd(24)
-        mask = find_osd(np.stack(frames))
+        mask, guide = find_osd(np.stack(frames))
         covered = (mask[text > 0] > 0).mean()
         self.assertGreater(covered, 0.95)
         self.assertLess((mask > 0).mean(), 0.1)
-        cleaned = list(remove_stream(frames, mask))
+        cleaned = list(remove_stream(frames, mask, guide))
         self.assertEqual(len(cleaned), len(frames))
         area = mask > 0
         before = np.abs(frames[12].astype(int) - scene[12])[area].mean()
         after = np.abs(cleaned[12].astype(int) - scene[12])[area].mean()
+        self.assertLess(after, before * 0.45)
+
+    def test_element_is_left_alone_while_not_shown(self):
+        frames, _, scene = flight_with_osd(24)
+        stats = np.zeros((240, 320), np.uint8)
+        cv2.putText(stats, "STATS", (150, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.8, 255, 2)
+        # Shown from frame 8 on, like the stats screen at the end of a flight.
+        for frame in frames[8:]:
+            cv2.putText(frame, "STATS", (150, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 5)
+            cv2.putText(frame, "STATS", (150, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        mask, guide = find_osd(np.stack(frames))
+        self.assertGreater((mask[stats > 0] > 0).mean(), 0.9)
+        cleaned = list(remove_stream(frames, mask, guide))
+        area = cv2.dilate(stats, np.ones((25, 25), np.uint8)) > 0
+        np.testing.assert_array_equal(cleaned[0][area], frames[0][area])
+        before = np.abs(frames[16].astype(int) - scene[16])[stats > 0].mean()
+        after = np.abs(cleaned[16].astype(int) - scene[16])[stats > 0].mean()
         self.assertLess(after, before * 0.45)
 
     def test_too_few_samples_are_rejected(self):

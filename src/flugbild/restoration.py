@@ -7,6 +7,7 @@ not claim to reconstruct content absent from every neighboring frame.
 from __future__ import annotations
 
 from collections import deque
+from dataclasses import dataclass
 from itertools import islice
 from pathlib import Path
 import subprocess
@@ -26,6 +27,11 @@ from .processor import (Laufergebnis, caption_workspace, encoding_options,
                         diagnostic_tail, output_duration, temporary_output, video_filters)
 from .recipe import Arbeitsrezept
 from .upscale import fuse_stream, target_size
+
+
+# OSD mask (0/255) and guide of steady edge orientations, see osd.find_osd.
+Overlay = tuple[np.ndarray, np.ndarray]
+
 
 
 def _aligned_reference(current: np.ndarray, reference: np.ndarray) -> np.ndarray:
@@ -141,26 +147,54 @@ def _fused(recipe: Arbeitsrezept) -> bool:
     return recipe.vergroesserung_prozent != 100 or recipe.rauschminderung > 0
 
 
+@dataclass(frozen=True)
+class _Effort:
+    """How much work the frame stages spend: neighbours, flow detail, fill size."""
+
+    colour_radius: int
+    colour_flow: int
+    osd_radius: int
+    osd_flow: int
+    osd_fill: float
+    fusion_radius: int
+    fusion_flow: int
+    fusion_preset: int
+    fusion_interpolation: int
+
+
+EFFORTS = {
+    "fast": _Effort(2, 240, 3, cv2.DISOPTICAL_FLOW_PRESET_ULTRAFAST, 0.5,
+                    1, 320, cv2.DISOPTICAL_FLOW_PRESET_ULTRAFAST, cv2.INTER_LINEAR),
+    "balanced": _Effort(3, 320, 4, cv2.DISOPTICAL_FLOW_PRESET_FAST, 0.5,
+                        2, 400, cv2.DISOPTICAL_FLOW_PRESET_FAST, cv2.INTER_LINEAR),
+    "best": _Effort(3, 320, 6, cv2.DISOPTICAL_FLOW_PRESET_FAST, 1.0,
+                    2, 480, cv2.DISOPTICAL_FLOW_PRESET_MEDIUM, cv2.INTER_CUBIC),
+}
+
+
 def _stages(frames: Iterable[np.ndarray], recipe: Arbeitsrezept,
             fingerprint: Signalsignatur | NeuralProfile | None,
-            osd: np.ndarray | None) -> Iterator[np.ndarray]:
+            osd: Overlay | None) -> Iterator[np.ndarray]:
     """Chain the frame stages in their fixed order: colour, model, OSD, fusion."""
+    effort = EFFORTS[recipe.aufwand]
     stream: Iterable[np.ndarray] = frames
     if recipe.signalart == "analog" and recipe.farbberuhigung > 0:
-        stream = repair_stream(stream, recipe.farbberuhigung, osd)
+        stream = repair_stream(stream, recipe.farbberuhigung, osd[0] if osd else None,
+                               effort.colour_radius, effort.colour_flow)
     if fingerprint is not None:
         stream = _model_stage(stream, recipe, fingerprint)
     if recipe.osd_entfernen and osd is not None:
-        stream = remove_stream(stream, osd)
+        stream = remove_stream(stream, *osd, effort.osd_radius, effort.osd_flow, effort.osd_fill)
     if _fused(recipe):
         stream = fuse_stream(stream, recipe.vergroesserung_prozent, recipe.rauschminderung / 100,
-                             recipe.kantendetail / 50)
+                             recipe.kantendetail / 50, effort.fusion_radius, effort.fusion_flow,
+                             effort.fusion_preset, effort.fusion_interpolation)
     return iter(stream)
 
 
 def clip_mask(source: Path, recipe: Arbeitsrezept, info: VideoKenndaten,
-               duration: float) -> np.ndarray | None:
-    """OSD mask for the cut: required for OSD removal, optional protection otherwise."""
+               duration: float) -> Overlay | None:
+    """OSD mask and guide for the cut: required for OSD removal, optional protection otherwise."""
     if recipe.osd_entfernen:
         return detect_osd(source, recipe.schnittbeginn, duration, info.width, info.height)
     if recipe.signalart == "analog" and recipe.farbberuhigung > 0:
@@ -171,17 +205,82 @@ def clip_mask(source: Path, recipe: Arbeitsrezept, info: VideoKenndaten,
     return None
 
 
+def _crop(osd: Overlay, box: tuple[int, int, int, int]) -> Overlay:
+    x, y, width, height = box
+    mask, guide = osd
+    return (np.ascontiguousarray(mask[y:y + height, x:x + width]),
+            np.ascontiguousarray(guide[y:y + height, x:x + width]))
+
+
+BAR_LEVEL = 24
+BAR_SAMPLES = 8
+
+
+def picture_box(source: Path, start: float, duration: float,
+                width: int, height: int) -> tuple[int, int, int, int]:
+    """(x, y, width, height) of the picture inside black side or top bars.
+
+    Goggles record a 4:3 picture in a 16:9 file. The bars are no picture and
+    need no repair, so the stages skip them: a quarter less work. A side counts
+    as bars only when it stays dark in every sampled frame and adds up to at
+    least 5 % of the frame; otherwise the whole frame is returned.
+    """
+    capture = cv2.VideoCapture(str(source))
+    brightest = None
+    try:
+        for index in range(BAR_SAMPLES):
+            capture.set(cv2.CAP_PROP_POS_MSEC, (start + duration * (index + 0.5) / BAR_SAMPLES) * 1000)
+            okay, frame = capture.read()
+            if not okay or frame.shape[:2] != (height, width):
+                continue
+            luma = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            brightest = luma if brightest is None else np.maximum(brightest, luma)
+    finally:
+        capture.release()
+    if brightest is None:
+        return 0, 0, width, height
+
+    def span(profile: np.ndarray, size: int) -> tuple[int, int]:
+        lit = np.flatnonzero(profile > BAR_LEVEL)
+        if not len(lit):
+            return 0, size
+        first, last = int(lit[0]), int(lit[-1]) + 1
+        if first + size - last < size * 0.05:
+            return 0, size
+        # Even edges keep the 4:2:0 chroma of the output aligned.
+        first, last = first - first % 2, min(size, last + last % 2)
+        return first, last - first
+
+    # A high percentile instead of the maximum ignores single noisy pixels.
+    x, inner_width = span(np.percentile(brightest, 90, axis=0), width)
+    y, inner_height = span(np.percentile(brightest, 90, axis=1), height)
+    return x, y, inner_width, inner_height
+
+
+def _placement(box: tuple[int, int, int, int], width: int, height: int,
+               percent: int) -> tuple[tuple[int, int], tuple[int, int], tuple[int, int]]:
+    """Picture size, frame size and picture position in the output frame."""
+    x, y, inner_width, inner_height = box
+    full = target_size(width, height, percent) if percent != 100 else (width, height)
+    inner = target_size(inner_width, inner_height, percent) if percent != 100 else (inner_width, inner_height)
+    offset = (min(full[0] - inner[0], round(x * full[0] / width / 2) * 2),
+              min(full[1] - inner[1], round(y * full[1] / height / 2) * 2))
+    return inner, full, offset
+
+
 def preview_frame(source: Path, seconds: float, recipe: Arbeitsrezept, info: VideoKenndaten,
                   fingerprint: Signalsignatur | NeuralProfile | None,
-                  osd: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
+                  osd: Overlay | None = None) -> tuple[np.ndarray, np.ndarray]:
     """Original and processed frame at ``seconds``, run through the full stage chain.
 
     A short run of frames around the moment is decoded so that every temporal
     stage sees real neighbours; ``osd`` can carry a mask detected earlier.
     """
     recipe.validate()
+    duration = output_duration(info, recipe)
     if osd is None:
-        osd = clip_mask(source, recipe, info, output_duration(info, recipe))
+        osd = clip_mask(source, recipe, info, duration)
+    box = picture_box(source, recipe.schnittbeginn, duration, info.width, info.height)
     lead, span = 0.25, 0.5
     start = max(0.0, seconds - lead)
     preroll = min(3.0, start)
@@ -195,9 +294,96 @@ def preview_frame(source: Path, seconds: float, recipe: Arbeitsrezept, info: Vid
     if not frames:
         raise ValueError("Could not decode frames at this moment")
     middle = min(len(frames) - 1, round((seconds - start) / span * len(frames)))
+    x, y, inner_width, inner_height = box
+    pictures = [np.ascontiguousarray(frame[y:y + inner_height, x:x + inner_width]) for frame in frames]
+    if osd is not None:
+        osd = _crop(osd, box)
     # Stages are lazy: stop as soon as the frame of interest has come through.
-    processed = next(islice(_stages(frames, recipe, fingerprint, osd), middle, None))
-    return frames[middle], processed
+    processed = next(islice(_stages(pictures, recipe, fingerprint, osd), middle, None))
+    _, (full_width, full_height), (left, top) = _placement(box, info.width, info.height,
+                                                           recipe.vergroesserung_prozent)
+    result = np.zeros((full_height, full_width, 3), np.uint8)
+    result[top:top + processed.shape[0], left:left + processed.shape[1]] = processed
+    return frames[middle], result
+
+
+def _decoder(source: Path, start: float, seconds: float, fps: float,
+             box: tuple[int, int, int, int]) -> list[str]:
+    # FFmpeg's timestamp seek is reliable for damaged transport streams; OpenCV's
+    # CAP_PROP_POS_MSEC can land several frames before the requested cut.
+    args = ["ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error"]
+    if start:
+        args.extend(["-ss", f"{start:.6f}"])
+    args.extend(["-i", str(source), "-t", f"{seconds:.6f}", "-map", "0:v:0", "-an", "-sn",
+                 "-vf", "crop={2}:{3}:{0}:{1}".format(*box), "-r", f"{fps:.6f}",
+                 "-f", "rawvideo", "-pix_fmt", "bgr24", "pipe:1"])
+    return args
+
+
+def _encoder(size: tuple[int, int], fps: float) -> list[str]:
+    return ["ffmpeg", "-hide_banner", "-nostdin", "-y", "-loglevel", "error",
+            "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{size[0]}x{size[1]}",
+            "-r", f"{fps:.6f}", "-i", "pipe:0"]
+
+
+def _pump(decoder_args: list[str], encoder_args: list[str], workplace: Path, size: tuple[int, int],
+          frame_limit: int, recipe: Arbeitsrezept,
+          fingerprint: Signalsignatur | NeuralProfile | None, osd: Overlay | None,
+          cancel: threading.Event, report: Callable[[int], None]) -> str:
+    """Decode up to ``frame_limit`` frames, run the stages and encode them.
+
+    Returns an error message, or "" on success.
+    """
+    width, height = size
+    log = tempfile.TemporaryFile(mode="w+b")
+    decoder_log = tempfile.TemporaryFile(mode="w+b")
+    decoder = None
+    encoder = None
+    try:
+        decoder = subprocess.Popen(decoder_args, stdout=subprocess.PIPE,
+                                   stderr=decoder_log, creationflags=PROCESS_FLAGS)
+        encoder = subprocess.Popen(encoder_args, stdin=subprocess.PIPE, stderr=log,
+                                   cwd=workplace, creationflags=PROCESS_FLAGS)
+        sent = 0
+        frame_bytes = width * height * 3
+        assert decoder.stdout is not None
+        assert encoder.stdin is not None
+
+        def decoded() -> Iterator[np.ndarray]:
+            for _ in range(frame_limit):
+                raw = decoder.stdout.read(frame_bytes)
+                if len(raw) != frame_bytes or cancel.is_set():
+                    return
+                yield np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 3)
+
+        for enhanced in _stages(decoded(), recipe, fingerprint, osd):
+            if cancel.is_set() or sent >= frame_limit:
+                break
+            encoder.stdin.write(enhanced.tobytes())
+            sent += 1
+            report(sent)
+        encoder.stdin.close()
+        decoder.stdout.close()
+        if decoder.poll() is None:
+            decoder.terminate()
+        decoder.wait(timeout=30)
+        encoder.wait(timeout=120)
+        if encoder.returncode or sent == 0:
+            return diagnostic_tail(log) or diagnostic_tail(decoder_log) or "Temporal export failed"
+        return ""
+    except Exception:
+        for proc in (decoder, encoder):
+            if proc is not None and proc.poll() is None:
+                proc.kill()
+                proc.wait()
+        raise
+    finally:
+        if decoder is not None and decoder.stdout:
+            decoder.stdout.close()
+        if encoder is not None and encoder.stdin and not encoder.stdin.closed:
+            encoder.stdin.close()
+        log.close()
+        decoder_log.close()
 
 
 def process_temporal(source: Path, target: Path, recipe: Arbeitsrezept, info: VideoKenndaten,
@@ -215,7 +401,6 @@ def process_temporal(source: Path, target: Path, recipe: Arbeitsrezept, info: Vi
         raise ValueError("Source and destination must differ")
     analog = recipe.signalart == "analog" and recipe.farbberuhigung > 0
     osd = clip_mask(source, recipe, info, duration)
-    upscaled = recipe.vergroesserung_prozent != 100
     # Fusion applies detail and size itself; FFmpeg must not do it again.
     filters = video_filters(recipe, restored=fingerprint is not None or analog, upscaled=_fused(recipe))
     options = encoding_options(recipe, info, duration)
@@ -226,30 +411,16 @@ def process_temporal(source: Path, target: Path, recipe: Arbeitsrezept, info: Vi
         capture.release()
     if fps <= 0 or fps > 240:
         raise ValueError("Could not read video frame rate")
-    width, height = info.width, info.height
-    out_width, out_height = (target_size(width, height, recipe.vergroesserung_prozent)
-                             if upscaled else (width, height))
+    box = picture_box(source, recipe.schnittbeginn, duration, info.width, info.height)
+    x, y, width, height = box
+    if osd is not None:
+        osd = _crop(osd, box)
+    out_size, (full_width, full_height), (left, top) = _placement(box, info.width, info.height,
+                                                                  recipe.vergroesserung_prozent)
+    if out_size != (full_width, full_height):
+        # The stages see the picture only; the bars come back as clean black.
+        filters = f"pad={full_width}:{full_height}:{left}:{top}:black," + filters
     frame_limit = max(1, round(duration * fps))
-    # FFmpeg's timestamp seek is reliable for damaged transport streams; OpenCV's
-    # CAP_PROP_POS_MSEC can land several frames before the requested cut.
-    decoder_args = ["ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error"]
-    if recipe.schnittbeginn:
-        decoder_args.extend(["-ss", str(recipe.schnittbeginn)])
-    decoder_args.extend(["-i", str(source), "-t", str(duration), "-map", "0:v:0",
-                         "-an", "-sn", "-r", f"{fps:.6f}", "-f", "rawvideo",
-                         "-pix_fmt", "bgr24", "pipe:1"])
-    ffmpeg_args = ["ffmpeg", "-hide_banner", "-nostdin", "-y", "-loglevel", "error",
-                   "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{out_width}x{out_height}",
-                   "-r", f"{fps:.6f}", "-i", "pipe:0"]
-    if info.has_audio:
-        if recipe.schnittbeginn:
-            ffmpeg_args.extend(["-ss", str(recipe.schnittbeginn)])
-        ffmpeg_args.extend(["-i", str(source)])
-    ffmpeg_args.extend(["-map", "0:v:0"])
-    if info.has_audio:
-        ffmpeg_args.extend(["-map", "1:a?"])
-    ffmpeg_args.extend(["-t", str(duration), "-vf", filters])
-    ffmpeg_args.extend(options)
     workspace = None
     try:
         workspace = caption_workspace(recipe)
@@ -258,61 +429,30 @@ def process_temporal(source: Path, target: Path, recipe: Arbeitsrezept, info: Vi
         if workspace:
             workspace.cleanup()
         raise
-    ffmpeg_args.extend(["-shortest", str(pending)])
-    log = tempfile.TemporaryFile(mode="w+b")
-    decoder_log = tempfile.TemporaryFile(mode="w+b")
     workplace = Path(workspace.name) if workspace else Path(__file__).parent / "assets"
-    decoder = None
-    encoder = None
     try:
-        decoder = subprocess.Popen(decoder_args, stdout=subprocess.PIPE,
-                                   stderr=decoder_log, creationflags=PROCESS_FLAGS)
-        encoder = subprocess.Popen(ffmpeg_args, stdin=subprocess.PIPE, stderr=log,
-                                   cwd=workplace, creationflags=PROCESS_FLAGS)
-        sent = 0
-        frame_bytes = width * height * 3
-        assert decoder.stdout is not None
-        assert encoder.stdin is not None
-        def decoded() -> Iterator[np.ndarray]:
-            for _ in range(frame_limit):
-                raw = decoder.stdout.read(frame_bytes)
-                if len(raw) != frame_bytes or cancel.is_set():
-                    return
-                yield np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 3)
-
-        for enhanced in _stages(decoded(), recipe, fingerprint, osd):
-            if cancel.is_set() or sent >= frame_limit:
-                break
-            encoder.stdin.write(enhanced.tobytes())
-            sent += 1
-            progress(min(1.0, sent / frame_limit))
-        encoder.stdin.close()
-        decoder.stdout.close()
-        if decoder.poll() is None:
-            decoder.terminate()
-        decoder.wait(timeout=30)
-        encoder.wait(timeout=120)
+        encoder_args = _encoder(out_size, fps)
+        if info.has_audio:
+            if recipe.schnittbeginn:
+                encoder_args.extend(["-ss", str(recipe.schnittbeginn)])
+            encoder_args.extend(["-i", str(source)])
+        encoder_args.extend(["-map", "0:v:0"])
+        if info.has_audio:
+            encoder_args.extend(["-map", "1:a?"])
+        encoder_args.extend(["-t", str(duration), "-vf", filters])
+        encoder_args.extend(options)
+        encoder_args.extend(["-shortest", str(pending)])
+        message = _pump(_decoder(source, recipe.schnittbeginn, duration, fps, box), encoder_args,
+                        workplace, (width, height), frame_limit, recipe, fingerprint, osd, cancel,
+                        lambda sent: progress(min(1.0, sent / frame_limit)))
         if cancel.is_set():
             return Laufergebnis(source, target, False, "Canceled")
-        if encoder.returncode or sent == 0:
-            message = diagnostic_tail(log) or diagnostic_tail(decoder_log) or "Temporal export failed"
+        if message:
             return Laufergebnis(source, target, False, message)
         pending.replace(target)
         progress(1.0)
         return Laufergebnis(source, target, True, "Done")
-    except Exception:
-        for proc in (decoder, encoder):
-            if proc is not None and proc.poll() is None:
-                proc.kill()
-                proc.wait()
-        raise
     finally:
         pending.unlink(missing_ok=True)
-        if decoder is not None and decoder.stdout:
-            decoder.stdout.close()
-        if encoder is not None and encoder.stdin and not encoder.stdin.closed:
-            encoder.stdin.close()
-        log.close()
-        decoder_log.close()
         if workspace:
             workspace.cleanup()

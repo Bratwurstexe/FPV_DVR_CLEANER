@@ -19,7 +19,7 @@ Removes rainbow stripes and black-and-white dropouts, paints out the OSD and ups
 
 ![One frame, left half original, right half cleaned](docs/media/hero-split.jpg)
 
-[Download](#download) · [Features](#features) · [Before / after](#before-and-after) · [How it works](#how-it-works) · [Workflow](#the-workflow) · [Getting started](#getting-started) · [Coming soon](#coming-soon) · [Licence](#licence)
+[Download](#download) · [Features](#features) · [Before / after](#before-and-after) · [Speed](#speed) · [How it works](#how-it-works) · [Workflow](#the-workflow) · [Getting started](#getting-started) · [Coming soon](#coming-soon) · [Licence](#licence)
 
 </div>
 
@@ -30,11 +30,12 @@ Removes rainbow stripes and black-and-white dropouts, paints out the OSD and ups
 - **Rainbow stripes removed.** Hue tears from a disturbed colour carrier are detected in each frame and replaced with colour from neighbouring frames.
 - **Black-and-white dropouts filled.** Frames or row bands where the receiver lost colour get their colour back; the brightness is never touched.
 - **Noise reduction and streak repair.** Five motion-aligned frames are fused around a robust median. Grain calms down, bright or dark streaks disappear, and moving edges stay sharp.
-- **OSD removal.** Text, icons and bars that stay in place while the picture moves are found, including warnings that appear only briefly. They are refilled from frames where the scene behind them is visible.
+- **OSD removal.** Text, icons and bars that stay in place while the picture moves are found, including warnings that appear only briefly. They are refilled from frames where the scene behind them is visible. Screens that are shown only part of the time, such as the stats after landing, are removed only while they are on screen.
 - **Multi-frame upscaling.** 1.5× (720p to 1080p) or 2×. Neighbouring frames add detail instead of just enlarging a single frame.
 - **Filmstrip trim editor.** A thumbnail timeline with zoom, start and end markers, quick play and keyboard shortcuts (`I`, `O`, `Space`, arrow keys).
 - **Check before you export.** Render any frame through the whole chain and compare original and result with a split slider.
 - **Batch export.** Every clip keeps its own cut. The remaining time is shown live, you can cancel at any moment, and the original audio is kept.
+- **Fast on every core.** Frames are repaired in parallel, black side bars are skipped, and a *Fast / Balanced / Best* setting trades time for quality. See [Speed](#speed).
 - **Optional local training.** A small self-supervised model can learn your receiver's pixel statistics from your own footage.
 - **Private.** No account, no upload, no telemetry. Everything runs locally.
 
@@ -57,6 +58,20 @@ All examples are real analog DVR recordings. Each image shows the full 4:3 pictu
 | ![Colour noise repaired](docs/media/analog-dropouts.gif) | ![Rainbow stripes removed](docs/media/analog-rainbow.gif) |
 | **OSD removal** | **1.5x upscaling (detail)** |
 | ![OSD removed](docs/media/osd-removal.gif) | ![Upscaling detail](docs/media/upscaling.gif) |
+
+## Speed
+
+How long an export takes, in minutes of processing for one minute of footage. Pick the speed on the *Repair* page: **Fast** for a quick look at a flight, **Balanced** (default) for most exports, **Best** for the final cut.
+
+![Processing time per minute of analog footage for Fast, Balanced and Best](docs/media/speed.svg)
+
+| Repair steps | Fast | Balanced | Best | Previous release |
+|---|---:|---:|---:|---:|
+| Colour repair | 1.4 min | 1.9 min | 2.1 min | 8.2 min |
+| Colour repair + OSD removal + noise reduction | 3.8 min | 4.8 min | 6.6 min | 36 min |
+| Everything + 1.5× upscaling to 1080p | 4.8 min | 6.6 min | 8.9 min | 55 min |
+
+Measured on 20 seconds of a real 720p60 analog recording (4:3 picture in a 16:9 file) with an Intel Core i7-13850HX laptop on mains power. A laptop is held back by its power limit, so desktop processors with more cores usually finish sooner. Recordings at 90 or 180 fps take proportionally longer, because every frame is repaired. To measure your own machine, run [tools/make_speed_chart.py](tools/make_speed_chart.py) on your own timings.
 
 ## How it works
 
@@ -85,7 +100,8 @@ You can add a small network trained on your own recordings (*Model training*). F
 ### 3 · OSD removal
 
 - **Finding overlays:** at the edge of a drawn overlay, the brightness gradient points the same way in every frame. At scene edges it points in all directions as the drone moves. Comparing summed gradient *vectors* with summed gradient *lengths* per colour channel marks edges that hold still. These edges are grouped into text lines and shapes, and closed outlines such as bars are filled.
-- **Brief overlays:** a sliding window applies the same test to warnings that appear only for a moment, but only while the scene is moving.
+- **Brief overlays:** a sliding window applies the same test to warnings that appear only for a moment, but only while the scene is moving. A straight scene edge that slides along itself also keeps its direction, so only flat, level rows full of upright strokes count: lines of text such as *LOW BATTERY*.
+- **Only while shown:** the clip-wide search also finds screens that are visible only part of the time, such as the stats after landing. For each element the edges that held still are remembered with their direction; a frame shows the element when enough of them are found there again. Changing digits have no steady edges, so the icon, point and unit decide. An element stays removed a moment longer after it was last seen, so blinking warnings do not flicker.
 - **Removal:** each region is filled from the neighbouring frame whose aligned content fits the region's rim best, with its brightness offset corrected. Motion is chained frame by frame, so even frames far apart line up. Where no frame shows the background, the region is inpainted.
 
 ### 4 · Multi-frame fusion: noise reduction and upscaling
@@ -98,6 +114,12 @@ The current frame and two frames on each side are aligned onto the same grid. If
 
 The output is H.264 MP4 with the original audio. Results are written to a temporary file and only renamed when the export succeeds.
 
+### 5 · How it stays fast
+
+- **Every core works.** Each stage builds a frame only from its input neighbours, never from its own earlier output, so frames are processed side by side on a shared thread pool while the order is kept.
+- **Only the picture.** Goggles record the 4:3 picture inside a 16:9 file. The black side bars are found once per cut, skipped by every stage and added back as clean black: about a quarter less work.
+- **Fast / Balanced / Best** sets how many neighbouring frames are used, how finely motion is followed and how fast the encoder runs. *Best* is the full-quality setting; *Balanced* is close to it in clearly less time.
+
 ## The workflow
 
 | 1 · Import | 2 · Trim |
@@ -108,7 +130,7 @@ The output is H.264 MP4 with the original audio. Results are written to a tempor
 
 1. **Import:** drop recordings onto the window or add a folder.
 2. **Trim:** mark start and end on the filmstrip (`I` / `O`), or type exact times.
-3. **Repair:** choose Analog or HDZero, colour repair, OSD removal and output size, then press *Render this frame* to check the result.
+3. **Repair:** choose Analog or HDZero, colour repair, OSD removal, output size and processing speed, then press *Render this frame* to check the result.
 4. **Export:** choose a folder and start. The remaining time is shown live, and you can cancel at any moment.
 
 ## Getting started
@@ -170,7 +192,7 @@ Ideas and bug reports are welcome in the [issues](https://github.com/Bratwurstex
 
 ## Limitations
 
-- Frame-by-frame cleaning is CPU-bound. Expect several seconds of processing per second of video with all options enabled.
+- Frame-by-frame cleaning is CPU-bound. With all options enabled, expect a few minutes of processing per minute of footage (see [Speed](#speed)); on laptops the power limit sets the pace.
 - Picture content that is missing in *every* nearby frame cannot be recovered. Long breakups and torn brightness stay visible.
 - OSD removal needs camera movement. In a hover, the area behind the OSD may never be visible and is inpainted instead.
 

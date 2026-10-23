@@ -21,23 +21,28 @@ from .recipe import Arbeitsrezept
 from .restoration import clip_mask, preview_frame, process_temporal
 
 
-def cached_mask(source: Path, recipe: Arbeitsrezept, info) -> np.ndarray | None:
-    """OSD mask of a cut, kept in the temp folder so repeated previews stay quick."""
+def cached_mask(source: Path, recipe: Arbeitsrezept, info) -> tuple[np.ndarray, np.ndarray] | None:
+    """OSD mask and guide of a cut, kept in the temp folder so repeated previews stay quick."""
     stamp = f"{source.resolve()}|{source.stat().st_mtime_ns}|{recipe.schnittbeginn}|{recipe.schnittende}"
-    store = Path(tempfile.gettempdir()) / f"flugbild-osd-{hashlib.sha1(stamp.encode()).hexdigest()[:16]}.png"
-    if store.exists():
+    name = f"flugbild-osd-{hashlib.sha1(stamp.encode()).hexdigest()[:16]}"
+    store = Path(tempfile.gettempdir()) / f"{name}.png"
+    guide_store = Path(tempfile.gettempdir()) / f"{name}-guide.png"
+    if store.exists() and guide_store.exists():
         mask = cv2.imread(str(store), cv2.IMREAD_GRAYSCALE)
-        if mask is not None and mask.shape == (info.height, info.width):
-            return mask
+        guide = cv2.imread(str(guide_store), cv2.IMREAD_GRAYSCALE)
+        if (mask is not None and guide is not None
+                and mask.shape == guide.shape == (info.height, info.width)):
+            return mask, guide
     duration = (min(info.duration, recipe.schnittende) if recipe.schnittende else info.duration)         - recipe.schnittbeginn
     probe = Arbeitsrezept(signalart=recipe.signalart, osd_entfernen=True,
                           schnittbeginn=recipe.schnittbeginn, schnittende=recipe.schnittende)
     try:
-        mask = clip_mask(source, probe, info, duration)
+        overlay = clip_mask(source, probe, info, duration)
     except ValueError:
         return None
-    cv2.imwrite(str(store), mask)
-    return mask
+    cv2.imwrite(str(store), overlay[0])
+    cv2.imwrite(str(guide_store), overlay[1])
+    return overlay
 
 
 def emit(kind: str, **fields: object) -> None:
@@ -59,10 +64,11 @@ def run(settings: dict) -> None:
         info = inspect_video(source)
         start = float(settings.get("start", 0))
         end = float(settings.get("end") or info.duration)
-        mask = cached_mask(source, Arbeitsrezept(schnittbeginn=start, schnittende=end
-                                                  if end < info.duration else 0.0), info)
-        if mask is None:
+        overlay = cached_mask(source, Arbeitsrezept(schnittbeginn=start, schnittende=end
+                                                     if end < info.duration else 0.0), info)
+        if overlay is None:
             raise ValueError("The cut is too short to find the OSD")
+        mask = overlay[0]
         still_frame(source, float(settings.get("seconds", start)), target)
         frame = cv2.imread(str(target))
         if frame is None or frame.shape[:2] != mask.shape:

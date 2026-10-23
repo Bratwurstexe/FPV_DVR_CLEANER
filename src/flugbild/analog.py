@@ -23,11 +23,12 @@ estimate fades to neutral grey instead of spreading a stripe.
 
 from __future__ import annotations
 
-from collections import deque
 from typing import Iterable, Iterator
 
 import cv2
 import numpy as np
+
+from .pipeline import PerThread, window_map
 
 
 RADIUS = 3
@@ -61,7 +62,7 @@ def _hue_tears(chroma: np.ndarray) -> np.ndarray:
 class _FrameData:
     """Per-frame data computed once and shared by every window it appears in."""
 
-    def __init__(self, frame: np.ndarray) -> None:
+    def __init__(self, frame: np.ndarray, flow_width: int = FLOW_WIDTH) -> None:
         self.ycc = cv2.cvtColor(frame, cv2.COLOR_BGR2YCrCb)
         height, width = frame.shape[:2]
         self.size = _grid(width, height)
@@ -69,7 +70,7 @@ class _FrameData:
         self.luma = cv2.GaussianBlur(coarse[:, :, 0], (3, 3), 0)
         # Chroma as one complex plane: Cr is the real and Cb the imaginary part.
         self.chroma = ((coarse[:, :, 1] - 128) + 1j * (coarse[:, :, 2] - 128)).astype(np.complex64)
-        factor = min(1.0, FLOW_WIDTH / width)
+        factor = min(1.0, flow_width / width)
         self.small = cv2.resize(self.ycc[:, :, 0], (max(8, round(width * factor)),
                                                     max(8, round(height * factor))),
                                 interpolation=cv2.INTER_AREA)
@@ -240,34 +241,26 @@ def repair_window(aligner: _Aligner, window: list[_FrameData], center: int,
 
 
 def repair_stream(frames: Iterable[np.ndarray], amount: int, osd: np.ndarray | None = None,
-                  radius: int = RADIUS) -> Iterator[np.ndarray]:
+                  radius: int = RADIUS, flow_width: int = FLOW_WIDTH) -> Iterator[np.ndarray]:
     """Yield repaired frames in order, each delayed by ``radius`` input frames.
 
     ``osd`` is an optional full-resolution 0/255 mask of overlay graphics.
+    Frames are repaired in parallel on the shared pool.
     """
     if amount == 0:
         yield from frames
         return
-    aligner = _Aligner()
-    window: deque[_FrameData] = deque()
-    overlay = None
-    first = 0
-    emitted = 0
-    for count, frame in enumerate(frames, start=1):
-        window.append(_FrameData(frame))
-        if overlay is None:
-            width, height = window[0].size
-            overlay = (np.zeros((height, width), np.float32) if osd is None else
-                       cv2.resize(osd, (width, height), interpolation=cv2.INTER_AREA).astype(np.float32) / 255)
-        while emitted + radius < count:
-            yield repair_window(aligner, list(window), emitted - first, amount, overlay)
-            emitted += 1
-            while emitted - first > radius:
-                window.popleft()
-                first += 1
-    while emitted < first + len(window):
-        yield repair_window(aligner, list(window), emitted - first, amount, overlay)
-        emitted += 1
-        while emitted - first > radius and len(window) > 1:
-            window.popleft()
-            first += 1
+    aligners = PerThread(_Aligner)
+    overlays: dict[tuple[int, int], np.ndarray] = {}
+
+    def overlay_for(size: tuple[int, int]) -> np.ndarray:
+        if size not in overlays:
+            width, height = size
+            overlays[size] = (np.zeros((height, width), np.float32) if osd is None else
+                              cv2.resize(osd, size, interpolation=cv2.INTER_AREA).astype(np.float32) / 255)
+        return overlays[size]
+
+    def work(window: list[_FrameData], center: int) -> np.ndarray:
+        return repair_window(aligners.get(), window, center, amount, overlay_for(window[center].size))
+
+    yield from window_map(frames, radius, lambda frame: _FrameData(frame, flow_width), work)

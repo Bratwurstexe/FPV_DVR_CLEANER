@@ -19,19 +19,26 @@ inpainted from its surroundings.
 from __future__ import annotations
 
 from collections import deque
+from concurrent.futures import Future
+from functools import partial
 from pathlib import Path
 import subprocess
-from typing import Iterable, Iterator
+from typing import Callable, Iterable, Iterator
 
 import cv2
 import numpy as np
 
 from .media import PROCESS_FLAGS
+from .pipeline import PerThread, ordered_map, submit
 
 
 PROBES = 40
 WINDOW = 6
 FIT_LIMIT = 14.0
+# An element of the clip mask counts as on screen when this share of its
+# steady edges is found in a frame, and stays removed for HOLD frames after.
+SHOWN_SHARE = 0.35
+HOLD = 150
 
 
 def _probe_frames(source: Path, start: float, duration: float,
@@ -62,15 +69,17 @@ class _Coherence:
 
     @staticmethod
     def gradients(frame: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        source = frame.astype(np.float32)
-        step_x = cv2.Sobel(source, cv2.CV_32F, 1, 0, ksize=3)
-        step_y = cv2.Sobel(source, cv2.CV_32F, 0, 1, ksize=3)
-        return step_x, step_y, cv2.magnitude(step_x, step_y)
+        # 3x3 Sobel steps of 8-bit pixels fit in int16; half the memory of
+        # float32 for the frames a sliding window keeps.
+        step_x = cv2.Sobel(frame, cv2.CV_16S, 1, 0, ksize=3)
+        step_y = cv2.Sobel(frame, cv2.CV_16S, 0, 1, ksize=3)
+        length = cv2.magnitude(step_x.astype(np.float32), step_y.astype(np.float32))
+        return step_x, step_y, np.rint(length).astype(np.int16)
 
     def add(self, parts: tuple[np.ndarray, np.ndarray, np.ndarray], sign: int = 1) -> None:
-        self.vector_x += sign * parts[0]
-        self.vector_y += sign * parts[1]
-        self.length += sign * parts[2]
+        combine = cv2.add if sign > 0 else cv2.subtract
+        for total, part in zip((self.vector_x, self.vector_y, self.length), parts):
+            combine(total, part, dst=total, dtype=cv2.CV_32F)
         self.count += sign
 
     def still_edges(self, steadiness: float, strength: float) -> np.ndarray:
@@ -123,28 +132,95 @@ def _overlay_shapes(edges: np.ndarray, picture: np.ndarray) -> np.ndarray:
     return shapes & (picture * 255)
 
 
-def find_osd(frames: np.ndarray) -> np.ndarray:
-    """Return a 0/255 mask of overlay graphics from BGR probes of one clip."""
+def _text_rows(shapes: np.ndarray, frame: np.ndarray) -> np.ndarray:
+    """Keep only shapes that look like a line of OSD text.
+
+    A straight scene edge that slides along itself while the drone flies
+    keeps its direction just like a drawn overlay. Warnings such as CRASH FLIP
+    differ: a flat, level row whose letters are full of upright strokes.
+    """
+    height = shapes.shape[0]
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    across = np.abs(cv2.Sobel(gray, cv2.CV_16S, 1, 0, ksize=3))
+    down = np.abs(cv2.Sobel(gray, cv2.CV_16S, 0, 1, ksize=3))
+    strong = np.maximum(across, down) > 60
+    upright = strong & (across > down)
+    kept = np.zeros_like(shapes)
+    outlines, _ = cv2.findContours(shapes, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for outline in outlines:
+        (_, _), (side_a, side_b), angle = cv2.minAreaRect(outline)
+        # Angle of the long side against the horizontal, 0..90 degrees.
+        tilt = abs(angle if side_a >= side_b else angle - 90) % 180
+        tilt = min(tilt, 180 - tilt)
+        x, y, w, h = cv2.boundingRect(outline)
+        if tilt > 8 or h > height * 0.1:
+            continue
+        region = np.zeros((h, w), np.uint8)
+        cv2.drawContours(region, [outline], -1, 1, cv2.FILLED, offset=(-x, -y))
+        inside = region > 0
+        edges = int(strong[y:y + h, x:x + w][inside].sum())
+        if edges and upright[y:y + h, x:x + w][inside].sum() >= 0.3 * edges:
+            cv2.drawContours(kept, [outline], -1, 255, cv2.FILLED)
+    return kept
+
+
+def _orientation(step_x: np.ndarray, step_y: np.ndarray) -> np.ndarray:
+    """Edge orientation in whole degrees, 1..180 (0 is kept for "no edge")."""
+    return (np.degrees(np.arctan2(step_y, step_x)).astype(np.int16) % 180 + 1).astype(np.uint8)
+
+
+def find_osd(frames: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Mask (0/255) of overlay graphics from BGR probes of one clip, and its guide.
+
+    The guide holds, inside the mask, the orientation of every edge that held
+    still over the probes, 0 elsewhere. It tells whether an element is on
+    screen in a given frame: digits that change have no steady edges, while
+    the icon, point and unit around them do.
+    """
     if len(frames) < 8:
         raise ValueError("Too few readable frames to find the OSD")
     coherence = _Coherence(frames.shape[1:3])
-    for frame in frames:
-        coherence.add(_Coherence.gradients(frame))
+    for parts in ordered_map(_Coherence.gradients, frames):
+        coherence.add(parts)
     picture = np.zeros(frames.shape[1:3], np.uint8)
     for frame in frames[:: max(1, len(frames) // 8)]:
         picture |= _picture_area(frame)
-    return _overlay_shapes(coherence.still_edges(0.7, 80.0), picture)
+    edges = coherence.still_edges(0.7, 80.0)
+    mask = _overlay_shapes(edges, picture)
+    # The colour channel with the strongest steady edge sets the direction.
+    strongest = cv2.magnitude(coherence.vector_x, coherence.vector_y).argmax(axis=2)[:, :, None]
+    step_x = np.take_along_axis(coherence.vector_x, strongest, axis=2)[:, :, 0]
+    step_y = np.take_along_axis(coherence.vector_y, strongest, axis=2)[:, :, 0]
+    guide = _orientation(step_x, step_y) * ((edges > 0) & (mask > 0))
+    return mask, guide
 
 
-def detect_osd(source: Path, start: float, duration: float, width: int, height: int) -> np.ndarray:
+def detect_osd(source: Path, start: float, duration: float,
+               width: int, height: int) -> tuple[np.ndarray, np.ndarray]:
     return find_osd(_probe_frames(source, start, duration, width, height))
+
+
+def _shown_share(frame: np.ndarray, guide: np.ndarray, labels: np.ndarray, elements: int) -> np.ndarray:
+    """Per mask element, the share of its guide edges found with the same orientation in ``frame``."""
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    step_x = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
+    step_y = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
+    known = guide > 0
+    now = _orientation(step_x[known], step_y[known]).astype(np.int16)
+    turn = np.abs(now - guide[known].astype(np.int16))
+    turn = np.minimum(turn, 180 - turn)
+    strong = np.hypot(step_x[known], step_y[known]) > 40
+    matched = strong & (turn <= 20)
+    where = labels[known]
+    total = np.bincount(where, minlength=elements)
+    return np.bincount(where[matched], minlength=elements) / np.maximum(total, 1)
 
 
 class _Patcher:
     """Paste each overlay region from the neighbour that fits its rim best."""
 
-    def __init__(self) -> None:
-        self.flow = cv2.DISOpticalFlow_create(cv2.DISOPTICAL_FLOW_PRESET_FAST)
+    def __init__(self, preset: int = cv2.DISOPTICAL_FLOW_PRESET_FAST) -> None:
+        self.flow = cv2.DISOpticalFlow_create(preset)
 
     @staticmethod
     def _small(frame: np.ndarray) -> np.ndarray:
@@ -163,16 +239,17 @@ class _Patcher:
             flow[:, :, channel] = np.where(blocked > 0, spread, flow[:, :, channel])
         return flow
 
-    def blocked(self, mask: np.ndarray, small_shape: tuple[int, int]) -> np.ndarray:
+    @staticmethod
+    def blocked(mask: np.ndarray, small_shape: tuple[int, int]) -> np.ndarray:
         return cv2.dilate(cv2.resize(mask, small_shape[::-1], interpolation=cv2.INTER_NEAREST),
                           np.ones((5, 5), np.uint8))
 
     def apply(self, frame: np.ndarray, mask: np.ndarray,
-              neighbours: list[tuple[np.ndarray, np.ndarray]]) -> np.ndarray:
+              neighbours: list[tuple[np.ndarray, np.ndarray]], fill_scale: float = 1.0) -> np.ndarray:
         """``neighbours`` holds (frame, small-scale flow from ``frame`` into it)."""
         result = frame.copy()
         if not mask.any() or not neighbours:
-            return _inpaint(result, mask, _picture_area(frame)) if mask.any() else result
+            return _inpaint(result, mask, _picture_area(frame), fill_scale) if mask.any() else result
         height, width = mask.shape
         small_height, small_width = neighbours[0][1].shape[:2]
         scale_x, scale_y = small_width / width, small_height / height
@@ -187,10 +264,11 @@ class _Patcher:
             rim &= mask[top:bottom, left:right] == 0
             columns, rows = np.meshgrid(np.arange(left, right, dtype=np.float32),
                                         np.arange(top, bottom, dtype=np.float32))
+            # Nearest lookup of the small-scale flow, the same for every neighbour.
+            at_x = np.minimum((columns * scale_x).astype(int), small_width - 1)
+            at_y = np.minimum((rows * scale_y).astype(int), small_height - 1)
             best, best_fit = None, FIT_LIMIT
             for other, flow in neighbours:
-                at_x = np.minimum((columns * scale_x).astype(int), flow.shape[1] - 1)
-                at_y = np.minimum((rows * scale_y).astype(int), flow.shape[0] - 1)
                 map_x = columns + flow[at_y, at_x, 0] / scale_x
                 map_y = rows + flow[at_y, at_x, 1] / scale_y
                 landing = cv2.remap(mask, map_x, map_y, cv2.INTER_NEAREST, borderValue=255)
@@ -215,14 +293,19 @@ class _Patcher:
             corrected = np.clip(patch.astype(np.float32) + offset, 0, 255).astype(np.uint8)
             result[top:bottom, left:right][inside] = corrected[inside]
         if unresolved.any():
-            result = _inpaint(result, unresolved, _picture_area(frame))
+            result = _inpaint(result, unresolved, _picture_area(frame), fill_scale)
         # Soften the seam so analog noise differences do not draw an outline.
-        edge = cv2.GaussianBlur(mask.astype(np.float32) / 255, (7, 7), 0)[:, :, None]
-        return (result * edge + frame * (1 - edge)).astype(np.uint8)
+        edge = cv2.GaussianBlur(mask.astype(np.float32) / 255, (7, 7), 0)
+        return cv2.blendLinear(result, frame, edge, 1 - edge)
 
 
-def _inpaint(frame: np.ndarray, mask: np.ndarray, picture: np.ndarray) -> np.ndarray:
-    """Spatial fallback: inpaint each region from the picture around it."""
+def _inpaint(frame: np.ndarray, mask: np.ndarray, picture: np.ndarray,
+             scale: float = 1.0) -> np.ndarray:
+    """Spatial fallback: inpaint each region from the picture around it.
+
+    Below a ``scale`` of one the regions are filled at a reduced size and
+    enlarged again: the fill is smooth anyway, and the cost falls with area.
+    """
     result = frame.copy()
     # Letterbox pixels next to a hole are treated as unknown so no black bleeds
     # into the fill; only a narrow band, to keep the inpainting work small.
@@ -235,9 +318,18 @@ def _inpaint(frame: np.ndarray, mask: np.ndarray, picture: np.ndarray) -> np.nda
         left, top = max(0, x - 12), max(0, y - 12)
         right, bottom = min(width, x + w + 12), min(height, y + h + 12)
         hole = mask[top:bottom, left:right] > 0
-        painted = cv2.inpaint(result[top:bottom, left:right], unknown[top:bottom, left:right],
-                              5, cv2.INPAINT_TELEA)
-        result[top:bottom, left:right][hole] = painted[hole]
+        area = result[top:bottom, left:right]
+        gaps = unknown[top:bottom, left:right]
+        if scale < 1 and min(area.shape[:2]) * scale >= 8:
+            size = (max(1, round(area.shape[1] * scale)), max(1, round(area.shape[0] * scale)))
+            small_gaps = cv2.dilate(cv2.resize(gaps, size, interpolation=cv2.INTER_NEAREST),
+                                    np.ones((3, 3), np.uint8))
+            painted = cv2.inpaint(cv2.resize(area, size, interpolation=cv2.INTER_AREA), small_gaps,
+                                  max(2, round(5 * scale)), cv2.INPAINT_TELEA)
+            painted = cv2.resize(painted, area.shape[1::-1], interpolation=cv2.INTER_LINEAR)
+        else:
+            painted = cv2.inpaint(area, gaps, 5, cv2.INPAINT_TELEA)
+        area[hole] = painted[hole]
     return result
 
 
@@ -251,104 +343,141 @@ def remove_osd(frame: np.ndarray, mask: np.ndarray,
                                        for other in neighbours or []])
 
 
-class _Chain:
-    """Flows between consecutive frames, joined to reach farther neighbours.
+def _chained(steps: dict[tuple[int, int], Future], start: int, end: int,
+             grid: tuple[np.ndarray, np.ndarray]) -> np.ndarray:
+    """Small-scale flow from frame ``start`` into frame ``end``.
 
     One flow estimate cannot follow large shifts across several frames, but
-    each step between consecutive frames is small. A step is computed once and
-    reused for every window it falls into.
+    each step between consecutive frames is small. Steps are computed once
+    and joined here for every window they fall into.
     """
-
-    def __init__(self, patcher: _Patcher, mask: np.ndarray) -> None:
-        self.patcher = patcher
-        self.mask = mask
-        self.small: dict[int, np.ndarray] = {}
-        self.steps: dict[tuple[int, int], np.ndarray] = {}
-        self.grid: tuple[np.ndarray, np.ndarray] | None = None
-        self.blocked: np.ndarray | None = None
-
-    def add(self, number: int, frame: np.ndarray) -> None:
-        self.small[number] = self.patcher._small(frame)
-        if self.blocked is None:
-            shape = self.small[number].shape
-            self.blocked = self.patcher.blocked(self.mask, shape)
-            self.grid = tuple(np.meshgrid(np.arange(shape[1], dtype=np.float32),
-                                          np.arange(shape[0], dtype=np.float32)))
-
-    def drop(self, number: int) -> None:
-        self.small.pop(number, None)
-        for key in [key for key in self.steps if number in key]:
-            del self.steps[key]
-
-    def flow(self, start: int, end: int) -> np.ndarray:
-        """Small-scale flow from frame ``start`` into frame ``end``."""
-        total = np.zeros((*self.small[start].shape, 2), np.float32)
-        direction = 1 if end > start else -1
-        for here in range(start, end, direction):
-            key = (here, here + direction)
-            if key not in self.steps:
-                self.steps[key] = self.patcher._motion(self.small[here], self.small[here + direction],
-                                                       self.blocked)
-            step = self.steps[key]
-            total += cv2.remap(step, self.grid[0] + total[:, :, 0], self.grid[1] + total[:, :, 1],
-                               cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
-        return total
+    total = np.zeros((*grid[0].shape, 2), np.float32)
+    direction = 1 if end > start else -1
+    for here in range(start, end, direction):
+        step = steps[here, here + direction].result()
+        total += cv2.remap(step, grid[0] + total[:, :, 0], grid[1] + total[:, :, 1],
+                           cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+    return total
 
 
-def remove_stream(frames: Iterable[np.ndarray], mask: np.ndarray,
-                  radius: int = WINDOW) -> Iterator[np.ndarray]:
-    """Yield frames with the clip mask plus briefly shown overlays painted out."""
-    window: deque[tuple[np.ndarray, tuple[np.ndarray, np.ndarray, np.ndarray], float]] = deque()
-    patcher = _Patcher()
-    chain = _Chain(patcher, mask)
-    coherence = None
-    picture = None
+class _Probe:
+    """Per-frame data for overlay removal, computed on the pool."""
 
-    first = 0
+    def __init__(self, frame: np.ndarray, share: Callable[[np.ndarray], np.ndarray] | None = None) -> None:
+        self.frame = frame
+        self.small = _Patcher._small(frame)
+        tiny = cv2.resize(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), (160, 90), interpolation=cv2.INTER_AREA)
+        self.tiny = tiny.astype(np.int16)
+        self.parts = _Coherence.gradients(frame)
+        self.picture = _picture_area(frame)
+        self.share = share(frame) if share else None
 
-    def finish(index: int) -> np.ndarray:
-        frame = window[index][0]
-        regions = mask
-        # Brief overlays can only be told apart from the scene while it moves.
-        if len(window) > 4 and np.median([item[2] for item in window]) > 4.0:
-            brief = _overlay_shapes(coherence.still_edges(0.85, 80.0), picture)
-            regions = mask | brief
-        # Analog chroma smears colour sideways past the drawn graphic.
-        regions = cv2.dilate(regions, np.ones((3, 11), np.uint8))
-        order = sorted((item for item in range(len(window)) if item != index),
-                       key=lambda item: abs(item - index))
-        return patcher.apply(frame, regions, [(window[item][0], chain.flow(first + index, first + item))
-                                              for item in order])
 
-    emitted = 0
-    previous = None
-    for count, frame in enumerate(frames, start=1):
-        if coherence is None:
-            coherence = _Coherence(frame.shape[:2])
-            picture = _picture_area(frame)
-        else:
-            picture |= _picture_area(frame)
-        small = cv2.resize(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), (160, 90), interpolation=cv2.INTER_AREA)
-        movement = 0.0 if previous is None else float(np.abs(small.astype(np.int16) - previous).mean())
-        previous = small.astype(np.int16)
-        parts = _Coherence.gradients(frame)
-        coherence.add(parts)
-        chain.add(count - 1, frame)
-        window.append((frame, parts, movement))
-        while emitted + radius < count:
-            yield finish(emitted - first)
-            emitted += 1
-            while emitted - first > radius:
-                coherence.add(window.popleft()[1], -1)
-                chain.drop(first)
-                first += 1
-    while emitted < first + len(window):
-        yield finish(emitted - first)
-        emitted += 1
-        while emitted - first > radius and len(window) > 1:
-            coherence.add(window.popleft()[1], -1)
-            chain.drop(first)
+def remove_stream(frames: Iterable[np.ndarray], mask: np.ndarray, guide: np.ndarray | None = None,
+                  radius: int = WINDOW, preset: int = cv2.DISOPTICAL_FLOW_PRESET_FAST,
+                  fill_scale: float = 1.0) -> Iterator[np.ndarray]:
+    """Yield frames with the clip mask plus briefly shown overlays painted out.
+
+    The clip mask gathers everything shown at some point of the cut, such as
+    the stats screen after landing. With the ``guide`` from ``find_osd`` an
+    element is only painted out around the frames that show it.
+
+    The sliding sums that find brief overlays are kept in order here; flows,
+    overlay shapes and the refill of each frame run on the shared pool.
+    ``fill_scale`` below one inpaints uncovered regions at a reduced size.
+    """
+    patchers = PerThread(lambda: _Patcher(preset))
+    widen = np.ones((3, 11), np.uint8)
+    # Analog chroma smears colour sideways past the drawn graphic.
+    flat = cv2.dilate(mask, widen)
+    elements, labels = cv2.connectedComponents(mask, connectivity=8)
+    share = None
+    if guide is not None:
+        share = partial(_shown_share, guide=guide, labels=labels, elements=elements)
+        # Elements without steady edges cannot be checked; they stay removed.
+        unguided = np.bincount(labels[guide > 0], minlength=elements) == 0
+
+    def finish(frame: np.ndarray, edges: np.ndarray | None, shown: np.ndarray | None, picture: np.ndarray,
+               neighbours: list[np.ndarray], flows: list[Callable[[], np.ndarray]]) -> np.ndarray:
+        regions = flat
+        if shown is not None and not shown[1:].all():
+            regions = cv2.dilate(shown[labels].astype(np.uint8) * 255, widen)
+        if edges is not None:
+            brief = _text_rows(_overlay_shapes(edges, picture), frame)
+            regions = regions | cv2.dilate(brief, widen)
+        return patchers.get().apply(frame, regions, [(other, flow()) for other, flow in zip(neighbours, flows)],
+                                    fill_scale)
+
+    def jobs() -> Iterator[tuple]:
+        window: deque[_Probe] = deque()
+        movement: deque[float] = deque()
+        steps: dict[tuple[int, int], Future] = {}
+        coherence = picture = blocked = grid = None
+        first = emitted = 0
+        last_seen = np.full(elements, -HOLD - 1)
+
+        def job(index: int) -> tuple:
+            here = first + index
+            edges = shown = None
+            # Brief overlays can only be told apart from the scene while it moves.
+            if len(window) > 4 and np.median(movement) > 4.0:
+                edges = coherence.still_edges(0.85, 80.0)
+            if share is not None:
+                # Seen up to ``radius`` frames ahead or HOLD frames before:
+                # blinking warnings and changing digits do not flicker.
+                shown = (here - last_seen <= HOLD) | unguided
+                shown[0] = False
+            order = sorted((item for item in range(len(window)) if item != index),
+                           key=lambda item: abs(item - index))
+            # The window slides on before the job runs: hand over the steps it needs.
+            reach = dict(steps)
+            flows = [partial(_chained, reach, here, first + item, grid) for item in order]
+            return (window[index].frame, edges, shown, picture.copy(),
+                    [window[item].frame for item in order], flows)
+
+        def slide() -> None:
+            nonlocal first
+            coherence.add(window.popleft().parts, -1)
+            movement.popleft()
+            for key in [key for key in steps if first in key]:
+                del steps[key]
             first += 1
+
+        # Each probe holds three gradient planes; keep only a few ahead.
+        probes = ordered_map(lambda frame: _Probe(frame, share), frames, ahead=8)
+        for count, probe in enumerate(probes, start=1):
+            if probe.share is not None:
+                last_seen[probe.share >= SHOWN_SHARE] = count - 1
+            if coherence is None:
+                coherence = _Coherence(probe.frame.shape[:2])
+                picture = probe.picture.copy()
+                blocked = _Patcher.blocked(mask, probe.small.shape)
+                grid = tuple(np.meshgrid(np.arange(probe.small.shape[1], dtype=np.float32),
+                                         np.arange(probe.small.shape[0], dtype=np.float32)))
+            else:
+                picture |= probe.picture
+            movement.append(float(np.abs(probe.tiny - window[-1].tiny).mean()) if window else 0.0)
+            coherence.add(probe.parts)
+            if window:
+                last = count - 2
+                before = window[-1].small
+                steps[last, last + 1] = submit(lambda a, b: patchers.get()._motion(a, b, blocked),
+                                               before, probe.small)
+                steps[last + 1, last] = submit(lambda a, b: patchers.get()._motion(a, b, blocked),
+                                               probe.small, before)
+            window.append(probe)
+            while emitted + radius < count:
+                yield job(emitted - first)
+                emitted += 1
+                while emitted - first > radius:
+                    slide()
+        while emitted < first + len(window):
+            yield job(emitted - first)
+            emitted += 1
+            while emitted - first > radius and len(window) > 1:
+                slide()
+
+    yield from ordered_map(lambda arguments: finish(*arguments), jobs())
 
 
 def preview(frame: np.ndarray, mask: np.ndarray) -> np.ndarray:

@@ -14,6 +14,11 @@ from .learning import Signalsignatur
 from .recipe import Arbeitsrezept
 
 
+# x264 speed per processing effort. Slower presets mostly save file size at
+# the same quality setting (CRF); the picture barely changes.
+ENCODER_PRESETS = {"fast": "veryfast", "balanced": "faster", "best": "medium"}
+
+
 def _font_file() -> str:
     return "Inter.ttf"
 
@@ -91,7 +96,7 @@ def encoding_options(recipe: Arbeitsrezept, info: VideoKenndaten, duration: floa
         args.extend(["-b:v", str(video_bps), "-maxrate", str(video_bps), "-bufsize", str(video_bps * 2)])
     else:
         args.extend(["-crf", str(recipe.kompressionswert)])
-    args.extend(["-preset", "medium", "-c:a", "aac", "-b:a", "128k"])
+    args.extend(["-preset", ENCODER_PRESETS[recipe.aufwand], "-c:a", "aac", "-b:a", "128k"])
     return args
 
 

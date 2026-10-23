@@ -201,6 +201,15 @@
               <Grid ColumnDefinitions="*,Auto"><TextBlock Text="DETAIL" Classes="label"/><TextBlock Grid.Column="1" x:Name="DetailValue" Text="15" Classes="label"/></Grid>
               <Slider x:Name="DetailSlider" Minimum="0" Maximum="100" Value="15" ValueChanged="Setting_Changed"/>
             </StackPanel></Border>
+            <Border Classes="card"><StackPanel Spacing="10">
+              <TextBlock Text="PROCESSING SPEED" Classes="eyebrow"/>
+              <StackPanel Orientation="Horizontal">
+                <RadioButton x:Name="EffortFast" Classes="segment" GroupName="effort" Content="Fast" IsCheckedChanged="Effort_Changed"/>
+                <RadioButton x:Name="EffortBalanced" Classes="segment" GroupName="effort" Content="Balanced" IsChecked="True" IsCheckedChanged="Effort_Changed"/>
+                <RadioButton x:Name="EffortBest" Classes="segment" GroupName="effort" Content="Best" IsCheckedChanged="Effort_Changed"/>
+              </StackPanel>
+              <TextBlock x:Name="EffortNote" Classes="note" FontSize="12" TextWrapping="Wrap" Text="Recommended. Nearly the quality of Best in clearly less time."/>
+            </StackPanel></Border>
             <Expander Header="Advanced" HorizontalAlignment="Stretch" Background="White" CornerRadius="14">
               <StackPanel Spacing="10" Margin="4">
                 <TextBlock Text="ENGINE" Classes="label"/>
