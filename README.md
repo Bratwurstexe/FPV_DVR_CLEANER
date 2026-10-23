@@ -1,6 +1,6 @@
 > [!IMPORTANT]
 > **Important bug fixed: saving the export.** In the packages up to 0.4.0 an export could fail with
-> `[WinError 267] The directory name is invalid` ("Der Verzeichnisname ist ungültig"), no matter which folder was chosen.
+> `[WinError 267] The directory name is invalid`, no matter which folder was chosen.
 > This is fixed in 0.4.1. Please download the [latest release](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest).
 
 <div align="center">
