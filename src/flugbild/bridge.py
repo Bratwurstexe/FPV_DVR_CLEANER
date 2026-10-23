@@ -122,8 +122,9 @@ def run(settings: dict) -> None:
         mode = settings["mode"]
         report = lambda ratio: emit("progress", fraction=ratio)
         if mode == "manual" and (recipe.signalart == "analog" or recipe.osd_entfernen
-                                 or recipe.vergroesserung_prozent != 100 or recipe.rauschminderung > 0):
-            # Colour repair, OSD removal, noise reduction and upscaling work frame by frame.
+                                 or recipe.vergroesserung_prozent != 100 or recipe.rauschminderung > 0
+                                 or (recipe.signalart == "digital" and recipe.blockpflege > 0)):
+            # Colour and breakup repair, OSD removal, noise reduction and upscaling work frame by frame.
             result = process_temporal(source, target, recipe, info, None,
                                       report, threading.Event())
         elif mode == "manual":

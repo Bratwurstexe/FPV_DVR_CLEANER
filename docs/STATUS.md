@@ -9,6 +9,7 @@
   - Export: live remaining time (hh:mm:ss) and cancel; partial files are removed.
   - Files given on the command line are added to the queue.
 - **Analog colour repair** (`analog.py`): detects colour dropout and transient hue tears, then estimates chroma robustly from six motion-aligned neighbours. On local test cuts, frame-to-frame chroma change fell from 7.8 to 3.0 (Harburg) and from 9.4 to 3.6 (Bremerhaven), measured as the mean absolute Cr/Cb change.
+- **HDZero breakup repair** (`digital.py`): blocks whose fine colour energy jumps against both neighbouring frames are rebuilt by flow interpolation between the nearest clean frames before and after; whole frames are rebuilt when most of them is broken. On two of the author's HDZero flights (26 765 frames) 36 frames were touched (0.13 %), all of them visible breakups. Fine specks that last several frames are reduced, not always removed.
 - **OSD detection and removal** (`osd.py`): gradient coherence across the cut and in a sliding window; refill per region from the best-fitting neighbour, with motion chained over consecutive frames, and inpainting as the fallback.
   - Elements of the clip mask are removed only around the frames that show them, checked against the orientation of their steady edges. The stats screen after landing no longer smears the flight footage of the same cut.
   - Brief overlays must look like a level row of text. Straight scene edges that slide along themselves, for example in corridors, are no longer taken for warnings.
@@ -17,7 +18,7 @@
 - Frame rate taken from the stream's base rate. Transport streams with a misleading container average no longer get duplicated frames.
 - Visual Studio Code: debug configurations for the app and the engine, build, release and test tasks.
 - GitHub workflow that builds the .NET app for Windows, Linux and macOS and runs the engine tests.
-- 19 automated tests (engine workflow, OSD, colour repair, model training, export recovery, parallel pipeline, side bars, recipes); legacy Qt tests are skipped when PySide6 is not installed.
+- 23 automated tests (engine workflow, OSD, colour repair, HDZero breakups, model training, export recovery, parallel pipeline, side bars, recipes); legacy Qt tests are skipped when PySide6 is not installed.
 
 ## Open before a public release
 

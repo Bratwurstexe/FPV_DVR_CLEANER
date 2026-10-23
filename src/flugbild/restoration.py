@@ -19,6 +19,7 @@ import cv2
 import numpy as np
 
 from .analog import repair_stream
+from .digital import repair_stream as mend_breakups
 from .learning import Signalsignatur
 from .neural import NeuralProfile
 from .media import PROCESS_FLAGS, VideoKenndaten
@@ -175,12 +176,14 @@ EFFORTS = {
 def _stages(frames: Iterable[np.ndarray], recipe: Arbeitsrezept,
             fingerprint: Signalsignatur | NeuralProfile | None,
             osd: Overlay | None) -> Iterator[np.ndarray]:
-    """Chain the frame stages in their fixed order: colour, model, OSD, fusion."""
+    """Chain the frame stages in their fixed order: colour or breakups, model, OSD, fusion."""
     effort = EFFORTS[recipe.aufwand]
     stream: Iterable[np.ndarray] = frames
     if recipe.signalart == "analog" and recipe.farbberuhigung > 0:
         stream = repair_stream(stream, recipe.farbberuhigung, osd[0] if osd else None,
                                effort.colour_radius, effort.colour_flow)
+    if recipe.signalart == "digital" and recipe.blockpflege > 0 and fingerprint is None:
+        stream = mend_breakups(stream, recipe.blockpflege)
     if fingerprint is not None:
         stream = _model_stage(stream, recipe, fingerprint)
     if recipe.osd_entfernen and osd is not None:

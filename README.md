@@ -3,7 +3,7 @@
 # FPV DVR Cleaner
 
 **Open-source restoration for analog and HDZero DVR recordings.**
-Removes rainbow stripes and black-and-white dropouts, paints out the OSD and upscales the result, all on your own computer.
+Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, paints out the OSD and upscales the result, all on your own computer.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-A64600)](LICENSE)
 [![Open source](https://img.shields.io/badge/open%20source-100%25-2ea44f)](https://github.com/Bratwurstexe/FPV_DVR_CLEANER)
@@ -26,6 +26,7 @@ Removes rainbow stripes and black-and-white dropouts, paints out the OSD and ups
 
 - **Rainbow stripes removed.** Hue tears from a disturbed colour carrier are detected in each frame and replaced with colour from neighbouring frames.
 - **Black-and-white dropouts filled.** Frames or row bands where the receiver lost colour get their colour back; the brightness is never touched.
+- **HDZero breakups rebuilt.** Frames or parts of frames that turn into coloured confetti when the digital link drops packets are rebuilt from the clean frames around them, even when the whole frame is lost.
 - **Noise reduction and streak repair.** Five motion-aligned frames are fused around a robust median. Grain calms down, bright or dark streaks disappear, and moving edges stay sharp.
 - **OSD removal.** Text, icons and bars that stay in place while the picture moves are found, including warnings that appear only briefly. They are refilled from frames where the scene behind them is visible. Screens that are shown only part of the time, such as the stats after landing, are removed only while they are on screen.
 - **Multi-frame upscaling.** 1.5× (720p to 1080p) or 2×. Neighbouring frames add detail instead of just enlarging a single frame.
@@ -38,7 +39,7 @@ Removes rainbow stripes and black-and-white dropouts, paints out the OSD and ups
 
 ## Before and after
 
-All examples are real analog DVR recordings. Each image shows the full 4:3 picture and, below it, the marked area enlarged 2x.
+All examples are real DVR recordings. Each analog image shows the full 4:3 picture and, below it, the marked area enlarged 2x.
 
 ![Colour noise, rainbow streaks and grain](docs/media/harburg-colour-before-after.jpg)
 
@@ -47,6 +48,14 @@ All examples are real analog DVR recordings. Each image shows the full 4:3 pictu
 ![OSD removal](docs/media/osd-removed-before-after.jpg)
 
 ![Multi-frame upscaling to 1080p](docs/media/upscaled-before-after.jpg)
+
+### HDZero breakups
+
+Two frames from an HDZero recording in which the link dropped out: half the frame, then the whole frame lost to confetti, and the rebuilt result. Below, scattered confetti over the post-flight stats; the OSD stays intact.
+
+![HDZero breakups rebuilt from the frames around them](docs/media/hdzero-before-after.jpg)
+
+![Scattered confetti removed around the stats screen](docs/media/hdzero-stats-before-after.jpg)
 
 ### In motion
 
@@ -90,9 +99,22 @@ A weak analog signal damages colour far more than brightness, and the damage cha
 - **Lasting bands:** a stripe that returns at the same place in several frames is caught by its edges: a colour edge without a matching brightness edge. There the colour is refilled from a local brightness-to-colour model.
 - **Settle:** finally the colour is smoothed with a filter guided by the brightness, so it follows the contours that survived the transmission instead of speckling.
 
-### 2 · Optional model / HDZero block repair
+### 2 · HDZero breakup repair and optional model
 
-You can add a small network trained on your own recordings (*Model training*). For HDZero, broken blocks are detected and replaced from the motion-aligned previous frame.
+You can add a small network trained on your own recordings (*Model training*).
+
+When the HDZero link drops packets, the decoder paints parts of a frame, or all of it, with blocks of random colour. The frames around it are usually intact, so they are used to rebuild it:
+
+- **Finding:** for every 16 px block, the energy of fine colour detail is measured. Real pictures have little of it and motion blur even less, while confetti consists of it. A block counts as broken when it is high there and clearly lower in *both* neighbouring frames, so colourful things that are always there, such as the OSD or text that just appeared, are left alone. Single specks are counted by their share of the block. When most of the frame is broken, the whole frame is rebuilt.
+- **Rebuilding:** the nearest frames before and after that are clean at those blocks are aligned with optical flow measured *between the two of them*, never in the broken frame. The in-between picture is blended into the broken blocks with a soft edge.
+
+What the detector sees: outlined blocks are rebuilt, a yellow frame means the whole frame is rebuilt.
+
+![Detected breakups: a band at the top, the whole frame, and smaller bands](docs/media/hdzero-detection.jpg)
+
+Slowed down, frame by frame: original, detected blocks, result.
+
+![Original, detected blocks and repaired result, slowed down](docs/media/hdzero.gif)
 
 ### 3 · OSD removal
 
