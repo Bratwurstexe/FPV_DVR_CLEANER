@@ -1,4 +1,4 @@
-Clean up analog and HDZero DVR recordings on your own computer: rainbow stripes, colour dropouts, noise and the OSD. Unpack and start; the app, the video engine and FFmpeg are included, so you don't need to install Python or FFmpeg.
+Clean up analog and HDZero DVR recordings on your own computer: rainbow stripes, colour dropouts, HDZero breakups, noise and the OSD. Unpack and start; the app, the video engine and FFmpeg are included, so you don't need to install Python or FFmpeg.
 
 ## Download
 
@@ -11,6 +11,14 @@ Clean up analog and HDZero DVR recordings on your own computer: rainbow stripes,
 | **Source code** | *Source code (zip)* or *(tar.gz)* below | see the README |
 
 `SHA256SUMS.txt` lists the checksum of every package.
+
+## New in 0.3.0
+
+**HDZero breakups rebuilt**
+- When the digital link drops packets, parts of a frame or the whole frame turn into coloured confetti. These frames are now rebuilt from the clean frames before and after them, aligned with optical flow.
+- Only real breakups are touched: on two test flights, about one frame in 750. The OSD, text that just appeared and colourful scenery are left alone.
+- On by default for HDZero: choose the *HDZero* signal on the Repair page. **Block repair** sets how eagerly it repairs; 0 turns it off.
+- The README shows what is detected and how it is rebuilt.
 
 ## New in 0.2.0
 

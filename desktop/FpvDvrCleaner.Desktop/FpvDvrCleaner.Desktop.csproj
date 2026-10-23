@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Product>FPV DVR Cleaner</Product>
   </PropertyGroup>
 
