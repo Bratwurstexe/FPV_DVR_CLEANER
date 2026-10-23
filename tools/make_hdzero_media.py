@@ -25,7 +25,7 @@ import cv2
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from flugbild.digital import BLOCK, MIN_BLOCKS, _Frame, broken_blocks, level, repair_stream  # noqa: E402
+from flugbild.digital import BLOCK, MIN_BLOCKS, SPAN, _Frame, broken_blocks, level, repair_stream  # noqa: E402
 
 WIDTH, HEIGHT, LEFT = 960, 720, 160
 MARGIN = 8  # frames decoded around each requested frame
@@ -50,8 +50,8 @@ def caption(image: np.ndarray, text: str) -> np.ndarray:
 
 def marked(frames: list[np.ndarray], index: int, threshold: float) -> tuple[np.ndarray, str]:
     """Frame ``index`` with the flagged blocks outlined, and a note how many."""
-    data = [_Frame(frame) for frame in frames[max(0, index - 1):index + 2]]
-    blocks = broken_blocks(data, min(index, 1), threshold)
+    data = [_Frame(frame) for frame in frames[max(0, index - SPAN):index + SPAN + 1]]
+    blocks = broken_blocks(data, min(index, SPAN), threshold)
     count = int(blocks.sum())
     note = "whole frame" if blocks.all() else f"{count} blocks"
     shown = frames[index].copy()

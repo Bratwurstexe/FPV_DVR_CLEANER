@@ -3,11 +3,11 @@
 Usage: python tools/make_speed_chart.py <timings.json> <output.svg> [--machine "CPU name"]
 
 ``timings.json`` maps "<effort>|<job>" to {"per_video_second": seconds}, with
-effort "fast", "balanced", "best" or "before" (the previous release) and job
-"colour", "colour+osd+denoise" or "all+1.5x". Seconds of processing per second
-of video equal minutes of processing per minute of footage, which is what the
-chart shows. The previous release is given as text: as a bar it would squash
-the others.
+effort "fast", "balanced" or "best" (measured with the GPU, if any) and job
+"colour", "colour+osd+denoise" or "all+1.5x". An optional "cpu-balanced|<job>"
+entry, measured with ``FLUGBILD_GPU=0``, is shown as text beside each job.
+Seconds of processing per second of video equal minutes of processing per
+minute of footage, which is what the chart shows.
 """
 
 from __future__ import annotations
@@ -71,7 +71,7 @@ def chart(timings: dict, machine: str) -> str:
                  'Processing time for one minute of analog footage</text>')
     y += 22
     parts.append(f'<text class="soft" x="{LEFT}" y="{y}" font-size="13">'
-                 f'720p at 60 fps, 4:3 picture. Measured on {machine}; shorter is better.</text>')
+                 f'720p at 60 fps, 4:3 picture. CPU and GPU, measured on {machine}; shorter is better.</text>')
     y += 26
     x = LEFT
     for index, (_, label) in enumerate(EFFORTS, start=1):
@@ -82,11 +82,11 @@ def chart(timings: dict, machine: str) -> str:
     plot_top = y
     rows = []
     for job, label in JOBS:
-        before = value.get(f"before|{job}")
+        cpu = value.get(f"cpu-balanced|{job}")
         rows.append(f'<text class="ink" x="{LEFT}" y="{y + 12}" font-size="13" font-weight="600">{label}</text>')
-        if before:
+        if cpu:
             rows.append(f'<text class="muted" x="{WIDTH - 12}" y="{y + 12}" font-size="12" text-anchor="end">'
-                        f'previous release: {minutes(before)}</text>')
+                        f'Balanced without GPU: {minutes(cpu)}</text>')
         y += 22
         for index, (effort, _) in enumerate(EFFORTS, start=1):
             seconds = value.get(f"{effort}|{job}")

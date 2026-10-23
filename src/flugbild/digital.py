@@ -7,8 +7,8 @@ such blocks. The frames around it are usually intact.
 * Finding: per 16 px block, the energy of fine colour detail (chroma minus
   its 3x3 blur, measured at half size). Real pictures have little of it, and
   motion blur even less, while confetti is made of it. A block counts as
-  broken when its energy is high and clearly lower in both neighbouring
-  frames, so colourful things that are always there, like the OSD, do not.
+  broken when its energy is high and clearly lower in the frames on both
+  sides, so colourful things that stay, like the OSD, do not.
 * Repair: the nearest frames before and after that are clean at those blocks
   are aligned with optical flow measured between the two of them, never in
   the broken frame, and the in-between picture is blended into the broken
@@ -35,6 +35,13 @@ MIN_BLOCKS = 30
 SPECK = 24.0
 # Share of broken blocks from which the whole frame is rebuilt.
 WHOLE_FRAME = 0.35
+# Frames looked at on each side. Looking further also finds confetti that
+# stays a few frames, but on weak-link stretches the OSD text itself comes and
+# goes, and was then taken for confetti; one frame is the safe choice.
+SPAN = 1
+# OSD text: brighter than this and with less colour (|Cr| + |Cb| from grey).
+WHITE_LEVEL = 190
+WHITE_COLOUR = 24
 
 
 def level(amount: int) -> float:
@@ -66,16 +73,27 @@ class _Frame:
                           interpolation=cv2.INTER_AREA)
 
 
+def _reference(window: list[_Frame], center: int) -> tuple[np.ndarray, np.ndarray]:
+    """Per block, the energy and speck share confetti must clearly exceed.
+
+    Confetti can stay for a few frames until the picture is refreshed, so each
+    side counts with its cleanest frame up to SPAN frames away. It must be
+    missing on both sides: OSD text that just appeared stays on screen after
+    this frame, confetti goes away again.
+    """
+    sides = [side for side in (window[max(0, center - SPAN):center], window[center + 1:center + 1 + SPAN]) if side]
+    calm = np.maximum.reduce([np.minimum.reduce([frame.energy for frame in side]) for side in sides])
+    clear = np.maximum.reduce([np.minimum.reduce([frame.specks for frame in side]) for side in sides])
+    return calm, clear
+
+
 def broken_blocks(window: list[_Frame], center: int, threshold: float) -> np.ndarray:
     """Boolean block grid of confetti that is new in ``window[center]``."""
     present = window[center]
     around = [window[index] for index in (center - 1, center + 1) if 0 <= index < len(window)]
     if not around:
         return np.zeros(present.energy.shape, bool)
-    # New in this frame means missing in both neighbours: OSD text that just
-    # appeared is still there in the next frame, confetti is not.
-    calm = np.maximum.reduce([frame.energy for frame in around])
-    clear = np.maximum.reduce([frame.specks for frame in around])
+    calm, clear = _reference(window, center)
     if np.median(present.energy) > 2.5 * max(np.median(frame.energy) for frame in around) + 0.5:
         # Confetti all over, some of it too grey to stand out block by block.
         return np.ones(present.energy.shape, bool)
@@ -90,11 +108,14 @@ def broken_blocks(window: list[_Frame], center: int, threshold: float) -> np.nda
 
 
 def _clean_side(window: list[_Frame], center: int, step: int, blocks: np.ndarray,
-                threshold: float) -> int | None:
-    """Nearest frame in direction ``step`` that is calm at nearly all ``blocks``."""
+                threshold: float, clear: np.ndarray) -> int | None:
+    """Nearest frame in direction ``step`` that is calm and free of specks at
+    nearly all ``blocks``; ``clear`` is the speck share a clean block may have."""
     index = center + step
+    limit = clear[blocks] + 0.02
     while 0 <= index < len(window):
-        if (window[index].energy[blocks] <= threshold).mean() >= 0.9:
+        frame = window[index]
+        if ((frame.energy[blocks] <= threshold) & (frame.specks[blocks] <= limit)).mean() >= 0.9:
             return index
         index += step
     return None
@@ -127,10 +148,12 @@ def repair_window(mender: _Mender, window: list[_Frame], center: int, threshold:
     blocks = broken_blocks(window, center, threshold)
     if blocks.sum() < MIN_BLOCKS:
         return present.frame
+    whole = bool(blocks.all())
     # Confetti often scatters around the blocks that were found.
     blocks = cv2.dilate(blocks.astype(np.uint8), np.ones((3, 3), np.uint8)) > 0
-    before = _clean_side(window, center, -1, blocks, threshold)
-    after = _clean_side(window, center, 1, blocks, threshold)
+    _, clear = _reference(window, center)
+    before = _clean_side(window, center, -1, blocks, threshold, clear)
+    after = _clean_side(window, center, 1, blocks, threshold, clear)
     if before is None and after is None:
         return present.frame
     if before is None or after is None:
@@ -140,7 +163,20 @@ def repair_window(mender: _Mender, window: list[_Frame], center: int, threshold:
     height, width = present.frame.shape[:2]
     mask = cv2.resize(blocks.astype(np.float32), (width, height), interpolation=cv2.INTER_NEAREST)
     mask = cv2.GaussianBlur(mask, (0, 0), BLOCK / 4)
+    if not whole:
+        # The VTX draws the OSD into the stream, so with a weak link its text
+        # can be missing in the frames around; a frame that has it then looks
+        # broken there. Confetti is coloured, OSD text is white: keep that.
+        mask[_white(present.frame)] = 0
     return cv2.blendLinear(fill, present.frame, mask, 1 - mask)
+
+
+def _white(frame: np.ndarray) -> np.ndarray:
+    """Bright, colourless pixels and their rim: OSD text."""
+    ycc = cv2.cvtColor(frame, cv2.COLOR_BGR2YCrCb)
+    colour = cv2.absdiff(ycc[:, :, 1], 128) + cv2.absdiff(ycc[:, :, 2], 128)
+    white = ((ycc[:, :, 0] > WHITE_LEVEL) & (colour < WHITE_COLOUR)).astype(np.uint8)
+    return cv2.dilate(white, np.ones((3, 3), np.uint8)) > 0
 
 
 def repair_stream(frames: Iterable[np.ndarray], amount: int, radius: int = RADIUS) -> Iterator[np.ndarray]:

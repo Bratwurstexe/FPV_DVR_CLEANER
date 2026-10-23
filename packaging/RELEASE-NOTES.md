@@ -12,6 +12,21 @@ Clean up analog and HDZero DVR recordings on your own computer: rainbow stripes,
 
 `SHA256SUMS.txt` lists the checksum of every package.
 
+## New in 0.4.0
+
+**CPU and GPU together**
+- The heavy part of noise reduction and upscaling now runs on the graphics card: NVIDIA, AMD, Intel or Apple, through OpenCL. Optical flow, colour repair and OSD removal keep every CPU core busy at the same time.
+- Nothing to set up: the app checks the GPU with a short self-test and uses it when the result matches the CPU. Without a usable GPU everything runs on the CPU as before, with the same result.
+- In first tests on a laptop with an NVIDIA RTX 2000 Ada, exports with noise reduction and upscaling finished about 10–30 % sooner. How much you gain depends on your CPU and GPU.
+- *Best* now also runs its sharper (bicubic) frame alignment on the GPU.
+
+**Safer HDZero repair**
+- Broken blocks are rebuilt only from frames that are free of confetti specks there, too.
+- White OSD text inside a partly broken frame is kept, so the stats screen no longer flickers on a weak link.
+
+**Tidied up**
+- The old Qt prototype was removed from the source code. The app is unchanged.
+
 ## New in 0.3.0
 
 **HDZero breakups rebuilt**

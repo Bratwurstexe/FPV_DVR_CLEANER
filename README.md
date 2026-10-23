@@ -4,6 +4,7 @@
 
 **Open-source restoration for analog and HDZero DVR recordings.**
 Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, paints out the OSD and upscales the result, all on your own computer.
+**Uses your processor and graphics card together, automatically:** the heavy pixel work runs on the GPU (NVIDIA, AMD, Intel or Apple), everything else on all CPU cores, for full speed at the same quality.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-A64600)](LICENSE)
 [![Open source](https://img.shields.io/badge/open%20source-100%25-2ea44f)](https://github.com/Bratwurstexe/FPV_DVR_CLEANER)
@@ -33,7 +34,7 @@ Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, 
 - **Filmstrip trim editor.** A thumbnail timeline with zoom, start and end markers, quick play and keyboard shortcuts (`I`, `O`, `Space`, arrow keys).
 - **Check before you export.** Render any frame through the whole chain and compare original and result with a split slider.
 - **Batch export.** Every clip keeps its own cut. The remaining time is shown live, you can cancel at any moment, and the original audio is kept.
-- **Fast on every core.** Frames are repaired in parallel, black side bars are skipped, and a *Fast / Balanced / Best* setting trades time for quality. See [Speed](#speed).
+- **CPU and GPU together.** Frames are repaired in parallel on every core, the full-resolution work of noise reduction and upscaling runs on the graphics card, black side bars are skipped, and a *Fast / Balanced / Best* setting trades time for quality. Without a usable GPU everything runs on the CPU with the same result. See [Speed](#speed).
 - **Optional local training.** A small self-supervised model can learn your receiver's pixel statistics from your own footage.
 - **Private.** No account, no upload, no telemetry. Everything runs locally.
 
@@ -77,7 +78,9 @@ How long an export takes, in minutes of processing for one minute of footage. Pi
 | Colour repair + OSD removal + noise reduction | 3.8 min | 4.8 min | 6.6 min | 36 min |
 | Everything + 1.5× upscaling to 1080p | 4.8 min | 6.6 min | 8.9 min | 55 min |
 
-Measured on 20 seconds of a real 720p60 analog recording (4:3 picture in a 16:9 file) with an Intel Core i7-13850HX laptop on mains power. A laptop is held back by its power limit, so desktop processors with more cores usually finish sooner. Recordings at 90 or 180 fps take proportionally longer, because every frame is repaired. To measure your own machine, run [tools/make_speed_chart.py](tools/make_speed_chart.py) on your own timings.
+Measured on 20 seconds of a real 720p60 analog recording (4:3 picture in a 16:9 file) with an Intel Core i7-13850HX laptop on mains power, on the CPU alone ("Previous release" is 0.1.0). Since 0.4.0 the graphics card takes over the heavy part of noise reduction and upscaling; on the same laptop with its NVIDIA RTX 2000 Ada, exports with those steps finished about 10–30 % sooner in first tests. Colour repair alone runs on the CPU and does not change.
+
+**Your speed will differ.** It depends on your processor and graphics card: a laptop is held back by its power limit, so desktop processors with more cores and stronger GPUs usually finish sooner, and without a usable GPU everything runs on the CPU as in the table. Recordings at 90 or 180 fps take proportionally longer, because every frame is repaired. To measure your own machine, run [tools/make_speed_chart.py](tools/make_speed_chart.py) on your own timings.
 
 ## How it works
 
@@ -136,6 +139,7 @@ The output is H.264 MP4 with the original audio. Results are written to a tempor
 ### 5 · How it stays fast
 
 - **Every core works.** Each stage builds a frame only from its input neighbours, never from its own earlier output, so frames are processed side by side on a shared thread pool while the order is kept.
+- **The graphics card takes the heavy part.** In noise reduction and upscaling, optical flow is measured on small frames on the CPU threads; warping the neighbours, the median and the weighting at full resolution run on the GPU through OpenCL, which NVIDIA, AMD, Intel and Apple drivers provide. Only two frames at a time go to the GPU, more would only queue up there, while the other threads keep the processor busy with flow, colour repair and OSD removal. At start a short self-test compares the GPU with the CPU; if it fails, or no GPU is found, the CPU does everything. The result is the same either way, to within one grey level. `FLUGBILD_GPU=0` turns the GPU off.
 - **Only the picture.** Goggles record the 4:3 picture inside a 16:9 file. The black side bars are found once per cut, skipped by every stage and added back as clean black: about a quarter less work.
 - **Fast / Balanced / Best** sets how many neighbouring frames are used, how finely motion is followed and how fast the encoder runs. *Best* is the full-quality setting; *Balanced* is close to it in clearly less time.
 
