@@ -1,14 +1,15 @@
 """Build the README images and GIF for the HDZero breakup repair.
 
 Usage: python tools/make_hdzero_media.py <clip> <output folder> [--gif FIRST-LAST]
-           [--detect N ...] [--pairs N ...] [--name PREFIX] [--amount 35]
+           [--video FIRST-LAST] [--detect N ...] [--pairs N ...] [--name PREFIX] [--amount 35]
 
 Frame numbers are those of ffmpeg's ``select`` filter. Writes
 
 * PREFIX-detection.jpg: the frames in --detect with every block the repair
   flags outlined, the way the detector sees them;
 * PREFIX-before-after.jpg: the frames in --pairs, original left, repaired right;
-* PREFIX.gif: the stretch in --gif, slowed down, as original | detected | repaired.
+* PREFIX.gif: the stretch in --gif, slowed down, as original | detected | repaired;
+* PREFIX-slow.mp4: the same for the stretch in --video, as a sharp video.
 
 Only the 4:3 picture area of a 720p recording is used.
 """
@@ -48,8 +49,9 @@ def caption(image: np.ndarray, text: str) -> np.ndarray:
     return image
 
 
-def marked(frames: list[np.ndarray], index: int, threshold: float) -> tuple[np.ndarray, str]:
-    """Frame ``index`` with the flagged blocks outlined, and a note how many."""
+def marked(frames: list[np.ndarray], index: int, threshold: float) -> tuple[np.ndarray, str, bool]:
+    """Frame ``index`` with the flagged blocks outlined, a note how many, and
+    whether the repair acts on them."""
     data = [_Frame(frame) for frame in frames[max(0, index - SPAN):index + SPAN + 1]]
     blocks = broken_blocks(data, min(index, SPAN), threshold)
     count = int(blocks.sum())
@@ -63,7 +65,7 @@ def marked(frames: list[np.ndarray], index: int, threshold: float) -> tuple[np.n
         for row, column in zip(*np.nonzero(blocks)):
             cv2.rectangle(shown, (column * BLOCK, row * BLOCK),
                           (column * BLOCK + BLOCK - 1, row * BLOCK + BLOCK - 1), colour, 2)
-    return shown, note
+    return shown, note, count >= MIN_BLOCKS
 
 
 def stretch(clip: Path, first: int, last: int, amount: int) -> tuple[list[np.ndarray], list[np.ndarray], int]:
@@ -85,6 +87,9 @@ def main() -> None:
     parser.add_argument("--amount", type=int, default=35, help="Block care setting, as in the app")
     parser.add_argument("--gif-width", type=int, default=900)
     parser.add_argument("--gif-fps", type=int, default=8)
+    parser.add_argument("--video", help="FIRST-LAST frame range for PREFIX-slow.mp4")
+    parser.add_argument("--video-fps", type=float, default=10, help="Frames per second of the slowed video")
+    parser.add_argument("--video-hold", type=int, default=1, help="Show each repaired frame this many times")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     threshold = level(args.amount)
@@ -93,7 +98,7 @@ def main() -> None:
         tiles = []
         for number in args.detect:
             frames, _, offset = stretch(args.clip, number, number, args.amount)
-            shown, note = marked(frames, offset, threshold)
+            shown, note, _ = marked(frames, offset, threshold)
             tiles.append(caption(shown, f"#{number}: {note}"))
         while len(tiles) % 2:
             tiles.append(np.zeros_like(tiles[0]))
@@ -112,25 +117,38 @@ def main() -> None:
         cv2.imwrite(str(args.output / f"{args.name}-before-after.jpg"), grid, [cv2.IMWRITE_JPEG_QUALITY, 88])
 
     if args.gif:
-        gif(args, threshold)
+        with tempfile.TemporaryDirectory() as folder:
+            panels(args, args.gif, threshold, Path(folder), 1)
+            graph = (f"scale={args.gif_width}:-1:flags=lanczos,split[a][b];"
+                     "[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4")
+            subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-framerate", str(args.gif_fps),
+                            "-i", str(Path(folder) / "%04d.png"), "-filter_complex", graph, "-loop", "0",
+                            str(args.output / f"{args.name}.gif")], check=True)
+    if args.video:
+        # The same panels as a sharp video for editing, e.g. the intro video.
+        with tempfile.TemporaryDirectory() as folder:
+            panels(args, args.video, threshold, Path(folder), args.video_hold)
+            subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-framerate",
+                            str(args.video_fps), "-i", str(Path(folder) / "%04d.png"), "-c:v", "libx264",
+                            "-crf", "14", "-preset", "medium", "-pix_fmt", "yuv420p", "-r", "30",
+                            str(args.output / f"{args.name}-slow.mp4")], check=True)
     for path in sorted(args.output.glob(f"{args.name}*")):
         print(path, path.stat().st_size // 1024, "KiB")
 
 
-def gif(args: argparse.Namespace, threshold: float) -> None:
-    first, last = (int(value) for value in args.gif.split("-"))
+def panels(args: argparse.Namespace, span: str, threshold: float, folder: Path, hold: int) -> None:
+    """Write original | detected | repaired panels of ``span`` (FIRST-LAST) as numbered PNGs;
+    repaired frames are written ``hold`` times so they can be seen."""
+    first, last = (int(value) for value in span.split("-"))
     frames, repaired, offset = stretch(args.clip, first, last, args.amount)
-    with tempfile.TemporaryDirectory() as folder:
-        for step, index in enumerate(range(offset, offset + last - first + 1)):
-            shown, _ = marked(frames, index, threshold)
-            panel = np.hstack([caption(frames[index].copy(), "ORIGINAL"), caption(shown, "DETECTED"),
-                               caption(repaired[index].copy(), "REPAIRED")])
-            cv2.imwrite(str(Path(folder) / f"{step:04d}.png"), panel)
-        graph = (f"scale={args.gif_width}:-1:flags=lanczos,split[a][b];"
-                 "[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4")
-        subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-framerate", str(args.gif_fps),
-                        "-i", str(Path(folder) / "%04d.png"), "-filter_complex", graph, "-loop", "0",
-                        str(args.output / f"{args.name}.gif")], check=True)
+    step = 0
+    for index in range(offset, offset + last - first + 1):
+        shown, _, acted = marked(frames, index, threshold)
+        panel = np.hstack([caption(frames[index].copy(), "ORIGINAL"), caption(shown, "DETECTED"),
+                           caption(repaired[index].copy(), "REPAIRED")])
+        for _ in range(hold if acted else 1):
+            cv2.imwrite(str(folder / f"{step:04d}.png"), panel)
+            step += 1
 
 
 if __name__ == "__main__":

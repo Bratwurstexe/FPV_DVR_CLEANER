@@ -1,8 +1,9 @@
 """Assemble the 1080p introduction video from comparison clips, diagrams and screenshots.
 
-Usage: python tools/make_intro_video.py <comparison folder> <output.mp4>
+Usage: python tools/make_intro_video.py <comparison folder> <hdzero-slow.mp4> <output.mp4>
 
-The comparison folder is the output of tools/make_media.py. Title cards are
+The comparison folder is the output of tools/make_media.py; the slowed HDZero
+clip comes from tools/make_hdzero_media.py --video. Title cards are
 rendered from small HTML pages with a headless Chromium browser (Edge or
 Chrome); everything else is put together with FFmpeg.
 """
@@ -116,46 +117,76 @@ def clip_segment(clip: Path, title: str, note: str, target: Path, seconds: float
     return target
 
 
+def thumbnail(compare: Path, seconds: float, target: Path, work: Path) -> Path:
+    """One frame split down the middle, original left and cleaned right, with a large
+    headline, as a JPEG for YouTube (under 2 MB). ``compare`` is a make_media clip:
+    two panels of the same frame side by side."""
+    still = work / "thumbnail-frame.png"
+    # Left half of the original panel next to the right half of the cleaned one.
+    # Damage often lasts a single frame: trim keeps the first frame at or after ``seconds`` exactly.
+    graph = (f"[0:v]trim=start={max(0.0, seconds - 0.004):.3f},split[a][b];[a]crop=iw/4:ih:0:0[left];"
+             "[b]crop=iw/4:ih:iw*3/4:0[right];[left][right]hstack,scale=1920:-2,crop=1920:1080")
+    subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(compare),
+                    "-filter_complex", graph, "-frames:v", "1", str(still)], check=True)
+    page = (f"<!doctype html><meta charset='utf-8'><style>{CARD_STYLE}"
+            "body{display:block;position:relative;overflow:hidden}"
+            "img{position:absolute;left:0;top:0;width:1920px;height:1080px}"
+            ".split{position:absolute;left:957px;top:0;width:6px;height:1080px;background:white}"
+            ".band{position:absolute;left:0;right:0;top:0;padding:46px 70px 120px;"
+            "background:linear-gradient(#000e 55%,transparent)}"
+            ".big{font-size:132px;font-weight:800;line-height:1;color:white;letter-spacing:-2px}"
+            ".small{font-size:56px;color:#FFC08E;margin-top:18px;font-weight:700}"
+            ".tag{position:absolute;bottom:44px;font-size:64px;font-weight:800;color:white;padding:10px 30px;"
+            "border-radius:16px}.before{left:60px;background:#000b}.after{right:60px;background:#A64600}</style>"
+            f"<img src='{still.as_uri()}'><div class='split'></div>"
+            "<div class='band'><div class='big'>FIX YOUR FPV DVR</div>"
+            "<div class='small'>Analog &amp; HDZero · free &amp; open source</div></div>"
+            "<div class='tag before'>BEFORE</div><div class='tag after'>AFTER</div>")
+    picture = render(page, work / "thumbnail.png", work)
+    subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(picture), "-q:v", "3",
+                    str(target)], check=True)
+    return target
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("comparisons", type=Path)
+    parser.add_argument("comparisons", type=Path, help="Output folder of tools/make_media.py")
+    parser.add_argument("hdzero", type=Path, help="hdzero-slow.mp4 from tools/make_hdzero_media.py --video")
     parser.add_argument("output", type=Path)
+    parser.add_argument("--thumbnail-clip", default="b_playground-compare.mp4",
+                        help="Comparison clip the thumbnail frame is taken from")
+    parser.add_argument("--thumbnail-at", type=float, default=1.667, help="Second of that clip")
     args = parser.parse_args()
     clips = args.comparisons.resolve()
     media = ROOT / "docs" / "media"
     with tempfile.TemporaryDirectory(prefix="intro-video-") as scratch:
         work = Path(scratch)
         pictures = {name: render(page, work / f"{name}.png", work) for name, page in {
-            "title": card("Open source · Analog & HDZero", "FPV DVR Cleaner",
-                          ["Clean up your DVR recordings: rainbow stripes, colour dropouts, OSD clutter."],
-                          ["Free", "MIT licence", "Runs locally"], big=True),
+            "title": card("Free & open source · Analog & HDZero", "FPV DVR Cleaner",
+                          ["Clean up your FPV DVR recordings, on your own computer."],
+                          ["Free", "MIT licence", "Windows · macOS · Linux", "CPU + GPU"], big=True),
             "problem": card("The problem", "Weak signal, ugly DVR",
-                            ["Analog: rainbow stripes and frames that drop to black and white.",
-                             "Every DVR: OSD text and icons burned into the picture.",
-                             "720p recordings that look soft on a big screen."]),
+                            ["Analog: rainbow stripes, colour noise and frames that drop to black and white.",
+                             "HDZero: frames that break up into coloured confetti.",
+                             "Every DVR: OSD text and icons burned into the picture."]),
             "how": card("How it works", "Neighbouring frames know more",
-                        ["Brightness survives a weak signal; colour does not.",
-                         "Each frame keeps its own brightness and gets its colour back from aligned neighbours.",
+                        ["A weak signal damages colour far more than brightness, and differently in every frame.",
+                         "Each frame keeps its brightness and gets its colour back from motion-aligned neighbours.",
+                         "Broken HDZero blocks are rebuilt from the clean frames before and after.",
                          "The OSD holds still while the scene moves, so it can be found and refilled."]),
-            "pipeline": framed(str(work / "pipeline.png"), "Pipeline", "From DVR file to clean MP4"),
-            "repair": framed(str(work / "colour-repair.png"), "Colour repair", "Keep the brightness, rebuild the colour"),
+            "speed": card("Speed", "CPU and GPU together",
+                          ["Every processor core repairs frames side by side.",
+                           "The graphics card takes the heavy pixel work: NVIDIA, AMD, Intel or Apple.",
+                           "Fast, Balanced or Best: you choose time against quality.",
+                           "How fast it runs depends on your processor and graphics card."]),
             "workflow": card("The app", "Four steps",
                              ["1  Import · drop your recordings", "2  Trim · filmstrip timeline, I / O keys",
                               "3  Repair · choose fixes, check one frame", "4  Export · live remaining time, cancel anytime"]),
-            "outro": card("Free & open source", "Try it, improve it",
-                          ["Windows, Linux and macOS · .NET 8 app with a Python engine.",
-                           "Feedback, issues and pull requests are welcome."],
+            "outro": card("Free & open source", "Download it, try it, improve it",
+                          ["Ready-to-run downloads for Windows, macOS and Linux.",
+                           "Source code, issues and pull requests on GitHub:"],
                           ["MIT licence", "No account", "No upload"], url=REPO),
-        }.items() if name not in ("pipeline", "repair")}
-        # Diagrams: render the SVGs first, then place them on the dark stage.
-        for name, svg, height in (("pipeline", "pipeline.svg", 330), ("colour-repair", "colour-repair.svg", 360)):
-            page = (f"<!doctype html><style>body{{margin:0;background:#F7F6F2}}</style>"
-                    f"<img src='{(media / svg).as_uri()}' width='1200' height='{height}'>")
-            render(page, work / f"{name}.png", work, 1200, height, scale=2)
-        pictures["pipeline"] = render(framed(str(work / "pipeline.png"), "Pipeline", "From DVR file to clean MP4"),
-                                      work / "pipeline-stage.png", work)
-        pictures["repair"] = render(framed(str(work / "colour-repair.png"), "Colour repair",
-                                           "Keep the brightness, rebuild the colour"), work / "repair-stage.png", work)
+        }.items()}
         screens = [render(framed(str(media / f"ui-{step}.png"), f"Step {number}", label), work / f"ui-{step}.png", work)
                    for number, (step, label) in enumerate([("import", "Import: drop recordings, build a queue"),
                                                             ("trim", "Trim: filmstrip timeline with markers"),
@@ -164,20 +195,24 @@ def main() -> None:
         parts = [
             still_segment(pictures["title"], 5, work / "s01.mp4"),
             still_segment(pictures["problem"], 6, work / "s02.mp4"),
-            clip_segment(clips / "a_harburg_colour-compare.mp4", "Colour noise and rainbow streaks",
-                         "original left · cleaned right", work / "s03.mp4"),
-            clip_segment(clips / "b_bremerhaven_rainbow-compare.mp4", "Rainbow stripes removed",
-                         "hue tears are detected and refilled from neighbouring frames", work / "s04.mp4"),
-            clip_segment(clips / "c_osd_removed-compare.mp4", "OSD removal",
-                         "text, icons, bars and brief warnings painted out", work / "s05.mp4"),
-            clip_segment(clips / "d_upscaled-compare.mp4", "Noise reduction and upscaling to 1080p",
-                         "detail crop · neighbouring frames add detail and calm noise", work / "s06.mp4"),
-            still_segment(pictures["how"], 7, work / "s07.mp4"),
-            still_segment(pictures["pipeline"], 7, work / "s08.mp4"),
-            still_segment(pictures["repair"], 8, work / "s09.mp4"),
-            still_segment(pictures["workflow"], 6, work / "s10.mp4"),
-            *[still_segment(screen, 4, work / f"s11_{index}.mp4") for index, screen in enumerate(screens)],
-            still_segment(pictures["outro"], 7, work / "s12.mp4"),
+            clip_segment(clips / "a_dropouts-compare.mp4", "Colour dropouts and rainbow stripes",
+                         "analog · original left · cleaned right", work / "s03.mp4"),
+            clip_segment(clips / "b_playground-compare.mp4", "Black-and-white frames get their colour back",
+                         "colour is rebuilt from the neighbouring frames", work / "s04.mp4"),
+            clip_segment(clips / "c_noise-compare.mp4", "Heavy colour noise",
+                         "grain and speckle calmed, moving edges stay sharp", work / "s05.mp4"),
+            clip_segment(clips / "f_osd-compare.mp4", "OSD removal",
+                         "voltage, icons and warnings painted out", work / "s07.mp4"),
+            clip_segment(clips / "d_upscaled-compare.mp4", "Upscaling to 1080p",
+                         "detail crop · neighbouring frames add detail and calm noise", work / "s08.mp4"),
+            # At 90 fps a breakup lasts a few frames; slowed down and held it can be seen.
+            clip_segment(args.hdzero.resolve(), "HDZero breakups, slowed down",
+                         "frames lost to confetti are rebuilt from the frames around them", work / "s10.mp4"),
+            still_segment(pictures["how"], 8, work / "s11.mp4"),
+            still_segment(pictures["speed"], 7, work / "s12.mp4"),
+            still_segment(pictures["workflow"], 5, work / "s13.mp4"),
+            *[still_segment(screen, 3.5, work / f"s14_{index}.mp4") for index, screen in enumerate(screens)],
+            still_segment(pictures["outro"], 8, work / "s15.mp4"),
         ]
         listing = work / "parts.txt"
         listing.write_text("".join(f"file '{part.as_posix()}'\n" for part in parts), encoding="utf-8")
@@ -185,8 +220,7 @@ def main() -> None:
         subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0",
                         "-i", str(listing), "-c:v", "libx264", "-crf", "18", "-preset", "slow", "-c:a", "aac",
                         "-movflags", "+faststart", str(args.output)], check=True)
-        # Keep the title card as a thumbnail suggestion next to the video.
-        shutil.copyfile(pictures["title"], args.output.with_suffix(".thumbnail.png"))
+        thumbnail(clips / args.thumbnail_clip, args.thumbnail_at, args.output.with_suffix(".thumbnail.jpg"), work)
     print(args.output)
 
 
