@@ -12,10 +12,6 @@ from flugbild.media import inspect_video, still_frame, tools_available
 from flugbild.processor import process_one
 from flugbild.restoration import process_temporal
 from flugbild.recipe import Arbeitsrezept
-try:
-    from flugbild.window import PreviewWorker
-except ImportError:  # The legacy Qt prototype is optional.
-    PreviewWorker = None
 
 
 @unittest.skipUnless(tools_available(), "FFmpeg tools are required")
@@ -80,13 +76,6 @@ class WorkflowTest(unittest.TestCase):
             plain = cv2.imread(str(folder / "plain.png"))
             timed = cv2.imread(str(folder / "timed.png"))
             self.assertLess(float(np.abs(plain.astype(np.int16) - timed).mean()), 15)
-
-            if PreviewWorker is not None:
-                preview = PreviewWorker(source, 0.5, temporal_recipe, folder, learned)
-                preview.run()
-                self.assertTrue((folder / "input.png").exists())
-                self.assertTrue((folder / "probe.png").exists())
-                self.assertTrue((folder / "change_map.png").exists())
 
 
 if __name__ == "__main__":

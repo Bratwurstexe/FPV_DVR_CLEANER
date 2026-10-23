@@ -19,10 +19,11 @@ jobs:
         include:
           - runner: windows-2025
             rid: win-x64
-            ffmpeg: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl.zip
+            # GPL builds: the engine encodes with libx264, which LGPL builds lack.
+            ffmpeg: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip
           - runner: ubuntu-24.04
             rid: linux-x64
-            ffmpeg: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-lgpl.tar.xz
+            ffmpeg: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz
           - runner: macos-15
             rid: osx-arm64
             ffmpeg: https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release
@@ -66,6 +67,9 @@ jobs:
           esac
           chmod +x ffmpeg-bundle/ffmpeg* ffmpeg-bundle/ffprobe* || true
           ffmpeg-bundle/ffmpeg -hide_banner -version | head -1
+          if ! ffmpeg-bundle/ffmpeg -hide_banner -encoders | grep -q libx264; then
+            echo "::error title=FFmpeg::The downloaded FFmpeg has no libx264 encoder"; exit 1
+          fi
           echo "$PWD/ffmpeg-bundle" >> "$GITHUB_PATH"
 
       - name: Install the engine dependencies
@@ -103,11 +107,16 @@ jobs:
           cp packaging/START-HERE.txt app/
           chmod +x app/FpvDvrCleaner.Desktop app/engine/flugbild-engine 2>/dev/null || true
           # Smoke test: the frozen engine answers a request with the bundled FFmpeg.
-          PATH="$PWD/app/ffmpeg:$PATH" ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc2=size=160x96:rate=10 -t 1 -pix_fmt yuv420p smoke.mp4
-          printf '{"action":"inspect","source":"%s"}' "$PWD/smoke.mp4" > smoke.json
+          PATH="$PWD/app/ffmpeg:$PATH" ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc2=size=160x96:rate=10 -t 1 -c:v libx264 -pix_fmt yuv420p smoke.mp4
+          # The Windows engine needs a Windows path, not the shell's /d/a/... form.
+          clip="$PWD/smoke.mp4"; command -v cygpath > /dev/null && clip=$(cygpath -m "$clip")
+          printf '{"action":"inspect","source":"%s"}' "$clip" > smoke.json
           engine=app/engine/flugbild-engine; [ -f "$engine.exe" ] && engine="$engine.exe"
           PATH="$PWD/app/ffmpeg:$PATH" "$engine" smoke.json | tee smoke.out
-          grep -q '"result"' smoke.out
+          if ! grep -q '"result"' smoke.out; then
+            echo "::error title=Engine smoke test on ${{ matrix.rid }}::$(tr '\n' ' ' < smoke.out)"
+            exit 1
+          fi
 
       - name: Archive (Windows)
         if: runner.os == 'Windows'
@@ -129,7 +138,8 @@ jobs:
           mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
           cp -R app/. "$bundle/Contents/MacOS/"
           cp desktop/FpvDvrCleaner.Desktop/Assets/app.png "$bundle/Contents/Resources/app.png"
-          sed "s/@VERSION@/${{ github.ref_name }}/" packaging/Info.plist > "$bundle/Contents/Info.plist"
+          version="${{ github.ref_name }}"
+          sed "s/@VERSION@/${version#v}/" packaging/Info.plist > "$bundle/Contents/Info.plist"
           # Ad-hoc signature so Apple Silicon starts the binaries; not notarised.
           codesign --force --deep --sign - "$bundle" || true
           arch=$([ "${{ matrix.rid }}" = osx-arm64 ] && echo apple-silicon || echo intel)
@@ -154,8 +164,12 @@ jobs:
           pattern: FPV-DVR-Cleaner-*
           path: release-assets
           merge-multiple: true
+      - name: Checksums
+        run: cd release-assets && sha256sum FPV-DVR-Cleaner-* > SHA256SUMS.txt && cat SHA256SUMS.txt
+      # GitHub adds the source code (zip and tar.gz) to every release by itself.
       - uses: softprops/action-gh-release@v2
         with:
           name: FPV DVR Cleaner ${{ github.ref_name }}
           body_path: packaging/RELEASE-NOTES.md
           files: release-assets/*
+          make_latest: true

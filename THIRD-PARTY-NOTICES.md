@@ -30,7 +30,9 @@ Development only, not shipped in Release builds:
 
 ## Video engine (Python)
 
-Installed by the user with `pip`; not bundled in this repository.
+Not part of this repository. When running from source, the user installs it
+with `pip`. The ready-to-run packages contain it as a frozen program in the
+`engine` folder (built with PyInstaller, GPL-2.0 with bootloader exception).
 
 | Component | Licence | Project |
 |---|---|---|
@@ -43,7 +45,7 @@ Installed by the user with `pip`; not bundled in this repository.
 
 | Component | Licence | Note |
 |---|---|---|
-| FFmpeg / ffprobe | LGPL-2.1-or-later or GPL, depending on how the build was configured | Called as a separate program; must be installed by the user and is not distributed with this project. https://ffmpeg.org/legal.html |
+| FFmpeg / ffprobe (with x264) | GPL-2.0-or-later (the bundled builds include libx264) | Called as a separate program. Not part of this repository. The ready-to-run packages ship the unmodified static builds from https://github.com/BtbN/FFmpeg-Builds (Windows, Linux) and https://ffmpeg.martin-riedl.de (macOS) in the `ffmpeg` folder, with their licence in `ffmpeg/FFMPEG-LICENSE.txt`. Source code: https://ffmpeg.org/download.html and the build projects above. https://ffmpeg.org/legal.html |
 
 ## Legacy prototype
 
@@ -55,6 +57,7 @@ exception). Neither is needed by the .NET desktop app.
 
 A published desktop build contains the .NET components listed above. Include
 this file and the licence texts of those packages (NuGet ships them in each
-package) with any binary release. The Python engine and FFmpeg are installed
-separately by the user; if a future release bundles them, add the licence files
-of the exact wheels and FFmpeg build that are bundled.
+package) with any binary release. The ready-to-run packages also bundle the
+frozen engine (Python, NumPy, OpenCV) and FFmpeg; the licence files of the
+bundled wheels ship inside the `engine` folder, and FFmpeg's in the `ffmpeg`
+folder.

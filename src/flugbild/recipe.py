@@ -22,6 +22,7 @@ class Arbeitsrezept:
     dateiziel_mb: int = 0
     osd_entfernen: bool = False
     rauschminderung: int = 0
+    aufwand: str = "balanced"
 
     def validate(self) -> None:
         if self.signalart not in {"analog", "digital", "neutral"}:
@@ -43,6 +44,8 @@ class Arbeitsrezept:
             raise ValueError("Caption is too long")
         if not isinstance(self.osd_entfernen, bool):
             raise ValueError("OSD removal must be on or off")
+        if self.aufwand not in {"fast", "balanced", "best"}:
+            raise ValueError("Unknown processing effort")
 
     def save(self, path: Path) -> None:
         self.validate()
@@ -51,7 +54,9 @@ class Arbeitsrezept:
     @classmethod
     def load(cls, path: Path) -> Arbeitsrezept:
         data = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(data, dict) or set(data) != set(cls.__dataclass_fields__):
+        # Recipes saved before the effort setting existed still load.
+        if (not isinstance(data, dict) or not set(data) <= set(cls.__dataclass_fields__)
+                or set(cls.__dataclass_fields__) - set(data) - {"aufwand"}):
             raise ValueError("Incomplete or unknown recipe")
         recipe = cls(**data)
         recipe.validate()
