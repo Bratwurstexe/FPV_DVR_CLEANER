@@ -108,10 +108,15 @@ jobs:
           chmod +x app/FpvDvrCleaner.Desktop app/engine/flugbild-engine 2>/dev/null || true
           # Smoke test: the frozen engine answers a request with the bundled FFmpeg.
           PATH="$PWD/app/ffmpeg:$PATH" ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc2=size=160x96:rate=10 -t 1 -c:v libx264 -pix_fmt yuv420p smoke.mp4
-          printf '{"action":"inspect","source":"%s"}' "$PWD/smoke.mp4" > smoke.json
+          # The Windows engine needs a Windows path, not the shell's /d/a/... form.
+          clip="$PWD/smoke.mp4"; command -v cygpath > /dev/null && clip=$(cygpath -m "$clip")
+          printf '{"action":"inspect","source":"%s"}' "$clip" > smoke.json
           engine=app/engine/flugbild-engine; [ -f "$engine.exe" ] && engine="$engine.exe"
           PATH="$PWD/app/ffmpeg:$PATH" "$engine" smoke.json | tee smoke.out
-          grep -q '"result"' smoke.out
+          if ! grep -q '"result"' smoke.out; then
+            echo "::error title=Engine smoke test on ${{ matrix.rid }}::$(tr '\n' ' ' < smoke.out)"
+            exit 1
+          fi
 
       - name: Archive (Windows)
         if: runner.os == 'Windows'

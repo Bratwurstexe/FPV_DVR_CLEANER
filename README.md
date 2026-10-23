@@ -10,10 +10,7 @@ Removes rainbow stripes and black-and-white dropouts, paints out the OSD and ups
 [![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-5f676d)](#getting-started)
 [![.NET 8](https://img.shields.io/badge/.NET-8-512BD4)](https://dotnet.microsoft.com)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB)](https://www.python.org)
-[![Status](https://img.shields.io/badge/status-first%20release-F08A3A)](docs/STATUS.md)
 [![Stars](https://img.shields.io/github/stars/Bratwurstexe/FPV_DVR_CLEANER?style=flat&color=A64600)](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/stargazers)
-
-[![Download the latest release](https://img.shields.io/github/v/release/Bratwurstexe/FPV_DVR_CLEANER?label=Download&style=for-the-badge&color=A64600)](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest)
 
 **[⬇ Download for Windows, macOS and Linux](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest)**: ready to run, no Python or FFmpeg setup.
 
