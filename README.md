@@ -15,7 +15,8 @@ Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB)](https://www.python.org)
 [![Stars](https://img.shields.io/github/stars/Bratwurstexe/FPV_DVR_CLEANER?style=flat&color=A64600)](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/stargazers)
 
-**[⬇ Download for Windows, macOS and Linux](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest)**: ready to run, no Python or FFmpeg setup.
+**[⬇ Download for Windows, macOS and Linux](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest)**: 
+ready to run, no Python or FFmpeg setup.
 
 ![One frame, left half original, right half cleaned](docs/media/hero-split.jpg)
 
