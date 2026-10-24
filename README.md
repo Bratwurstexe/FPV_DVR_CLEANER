@@ -17,18 +17,11 @@ Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, 
 
 <h2><a href="https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest">⬇ Download for Windows, macOS and Linux</a><br><sub>Ready to run, no Python or FFmpeg setup.</sub></h2>
 
-<table>
-  <tr>
-    <th><a href="#features">Features</a></th>
-    <th><a href="#before-and-after">Before / after</a></th>
-    <th><a href="#speed">Speed</a></th>
-    <th><a href="#how-it-works">How it works</a></th>
-    <th><a href="#the-workflow">Workflow</a></th>
-    <th><a href="#getting-started">Getting started</a></th>
-    <th><a href="#coming-soon">Coming soon</a></th>
-    <th><a href="#licence">Licence</a></th>
-  </tr>
-</table>
+<hr>
+
+<p align="center"><a href="#features"><b>Features</b></a>&ensp;·&ensp;<a href="#before-and-after"><b>Before / after</b></a>&ensp;·&ensp;<a href="#speed"><b>Speed</b></a>&ensp;·&ensp;<a href="#how-it-works"><b>How it works</b></a>&ensp;·&ensp;<a href="#the-workflow"><b>Workflow</b></a>&ensp;·&ensp;<a href="#getting-started"><b>Getting started</b></a>&ensp;·&ensp;<a href="#coming-soon"><b>Coming soon</b></a>&ensp;·&ensp;<a href="#licence"><b>Licence</b></a></p>
+
+<hr>
 
 ![One frame, left half original, right half cleaned](docs/media/hero-split.jpg)
 
