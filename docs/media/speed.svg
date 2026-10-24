@@ -20,19 +20,21 @@
 <rect class="surface" width="760" height="412" rx="10"/>
 <line class="axis" x1="24.0" y1="98" x2="24.0" y2="364" stroke-width="1"/>
 <text class="muted" x="24.0" y="380" font-size="11" text-anchor="middle">0</text>
-<line class="grid" x1="152.0" y1="98" x2="152.0" y2="364" stroke-width="1"/>
-<text class="muted" x="152.0" y="380" font-size="11" text-anchor="middle">2</text>
-<line class="grid" x1="280.0" y1="98" x2="280.0" y2="364" stroke-width="1"/>
-<text class="muted" x="280.0" y="380" font-size="11" text-anchor="middle">4</text>
-<line class="grid" x1="408.0" y1="98" x2="408.0" y2="364" stroke-width="1"/>
-<text class="muted" x="408.0" y="380" font-size="11" text-anchor="middle">6</text>
-<line class="grid" x1="536.0" y1="98" x2="536.0" y2="364" stroke-width="1"/>
-<text class="muted" x="536.0" y="380" font-size="11" text-anchor="middle">8</text>
+<line class="grid" x1="130.7" y1="98" x2="130.7" y2="364" stroke-width="1"/>
+<text class="muted" x="130.7" y="380" font-size="11" text-anchor="middle">1</text>
+<line class="grid" x1="237.3" y1="98" x2="237.3" y2="364" stroke-width="1"/>
+<text class="muted" x="237.3" y="380" font-size="11" text-anchor="middle">2</text>
+<line class="grid" x1="344.0" y1="98" x2="344.0" y2="364" stroke-width="1"/>
+<text class="muted" x="344.0" y="380" font-size="11" text-anchor="middle">3</text>
+<line class="grid" x1="450.7" y1="98" x2="450.7" y2="364" stroke-width="1"/>
+<text class="muted" x="450.7" y="380" font-size="11" text-anchor="middle">4</text>
+<line class="grid" x1="557.3" y1="98" x2="557.3" y2="364" stroke-width="1"/>
+<text class="muted" x="557.3" y="380" font-size="11" text-anchor="middle">5</text>
 <line class="grid" x1="664.0" y1="98" x2="664.0" y2="364" stroke-width="1"/>
-<text class="muted" x="664.0" y="380" font-size="11" text-anchor="middle">10</text>
+<text class="muted" x="664.0" y="380" font-size="11" text-anchor="middle">6</text>
 <text class="muted" x="344.0" y="398" font-size="11" text-anchor="middle">minutes of processing</text>
 <text class="ink" x="24" y="28" font-size="17" font-weight="600">Processing time for one minute of analog footage</text>
-<text class="soft" x="24" y="50" font-size="13">720p at 60 fps, 4:3 picture. Measured on an Intel Core i7-13850HX laptop; shorter is better.</text>
+<text class="soft" x="24" y="50" font-size="13">720p at 60 fps, 4:3 picture. Measured on AMD Ryzen 5 5600 + NVIDIA RTX 3070 (desktop). Shorter is better.</text>
 <rect class="s1" x="24" y="66" width="12" height="12" rx="3"/>
 <text class="soft" x="42" y="76" font-size="13">Fast</text>
 <rect class="s2" x="94.0" y="66" width="12" height="12" rx="3"/>
@@ -40,27 +42,27 @@
 <rect class="s3" x="194.0" y="66" width="12" height="12" rx="3"/>
 <text class="soft" x="212.0" y="76" font-size="13">Best</text>
 <text class="ink" x="24" y="110" font-size="13" font-weight="600">Colour repair</text>
-<text class="muted" x="748" y="110" font-size="12" text-anchor="end">previous release: 8.2 min</text>
-<path class="s1" d="M24.0,120.0 h83.6 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-83.6 z"/>
-<text class="ink" x="117.6" y="132.5" font-size="12">1.4 min</text>
-<path class="s2" d="M24.0,138.0 h114.5 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-114.5 z"/>
-<text class="ink" x="148.5" y="150.5" font-size="12">1.9 min</text>
-<path class="s3" d="M24.0,156.0 h130.5 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-130.5 z"/>
-<text class="ink" x="164.5" y="168.5" font-size="12">2.1 min</text>
+<text class="muted" x="748" y="110" font-size="12" text-anchor="end">Balanced without GPU: 2.1 min</text>
+<path class="s1" d="M24.0,120.0 h175.5 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-175.5 z"/>
+<text class="ink" x="209.5" y="132.5" font-size="12">1.7 min</text>
+<path class="s2" d="M24.0,138.0 h215.8 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-215.8 z"/>
+<text class="ink" x="249.8" y="150.5" font-size="12">2.1 min</text>
+<path class="s3" d="M24.0,156.0 h219.8 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-219.8 z"/>
+<text class="ink" x="253.8" y="168.5" font-size="12">2.1 min</text>
 <text class="ink" x="24" y="202" font-size="13" font-weight="600">Colour repair + OSD removal + noise reduction</text>
-<text class="muted" x="748" y="202" font-size="12" text-anchor="end">previous release: 36 min</text>
-<path class="s1" d="M24.0,212.0 h236.6 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-236.6 z"/>
-<text class="ink" x="270.6" y="224.5" font-size="12">3.8 min</text>
-<path class="s2" d="M24.0,230.0 h304.2 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-304.2 z"/>
-<text class="ink" x="338.2" y="242.5" font-size="12">4.8 min</text>
-<path class="s3" d="M24.0,248.0 h418.5 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-418.5 z"/>
-<text class="ink" x="452.5" y="260.5" font-size="12">6.6 min</text>
+<text class="muted" x="748" y="202" font-size="12" text-anchor="end">Balanced without GPU: 6.4 min</text>
+<path class="s1" d="M24.0,212.0 h366.0 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-366.0 z"/>
+<text class="ink" x="400.0" y="224.5" font-size="12">3.5 min</text>
+<path class="s2" d="M24.0,230.0 h415.2 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-415.2 z"/>
+<text class="ink" x="449.2" y="242.5" font-size="12">3.9 min</text>
+<path class="s3" d="M24.0,248.0 h489.8 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-489.8 z"/>
+<text class="ink" x="523.8" y="260.5" font-size="12">4.6 min</text>
 <text class="ink" x="24" y="294" font-size="13" font-weight="600">Everything + 1.5× upscaling to 1080p</text>
-<text class="muted" x="748" y="294" font-size="12" text-anchor="end">previous release: 55 min</text>
-<path class="s1" d="M24.0,304.0 h305.5 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-305.5 z"/>
-<text class="ink" x="339.5" y="316.5" font-size="12">4.8 min</text>
-<path class="s2" d="M24.0,322.0 h416.8 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-416.8 z"/>
-<text class="ink" x="450.8" y="334.5" font-size="12">6.6 min</text>
-<path class="s3" d="M24.0,340.0 h565.8 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-565.8 z"/>
-<text class="ink" x="599.8" y="352.5" font-size="12">8.9 min</text>
+<text class="muted" x="748" y="294" font-size="12" text-anchor="end">Balanced without GPU: 10 min</text>
+<path class="s1" d="M24.0,304.0 h438.6 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-438.6 z"/>
+<text class="ink" x="472.6" y="316.5" font-size="12">4.1 min</text>
+<path class="s2" d="M24.0,322.0 h509.3 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-509.3 z"/>
+<text class="ink" x="543.3" y="334.5" font-size="12">4.8 min</text>
+<path class="s3" d="M24.0,340.0 h615.8 a4.0,4.0 0 0 1 4.0,4.0 v8.0 a4.0,4.0 0 0 1 -4.0,4.0 h-615.8 z"/>
+<text class="ink" x="649.8" y="352.5" font-size="12">5.8 min</text>
 </svg>

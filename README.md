@@ -2,6 +2,8 @@
 
 <div align="center">
 
+<img src="docs/media/logo-quad.gif" width="140" alt="FPV DVR Cleaner logo: a small quad flying over a progress bar">
+
 # FPV DVR Cleaner
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-A64600)](LICENSE)
@@ -81,15 +83,15 @@ How long an export takes, in minutes of processing for one minute of footage. Pi
 
 ![Processing time per minute of analog footage for Fast, Balanced and Best](docs/media/speed.svg)
 
-| Repair steps | Fast | Balanced | Best | Previous release |
+| Repair steps | Fast | Balanced | Best | Balanced, CPU only |
 |---|---:|---:|---:|---:|
-| Colour repair | 1.4 min | 1.9 min | 2.1 min | 8.2 min |
-| Colour repair + OSD removal + noise reduction | 3.8 min | 4.8 min | 6.6 min | 36 min |
-| Everything + 1.5× upscaling to 1080p | 4.8 min | 6.6 min | 8.9 min | 55 min |
+| Colour repair | 1.7 min | 2.1 min | 2.1 min | 2.1 min |
+| Colour repair + OSD removal + noise reduction | 3.5 min | 3.9 min | 4.6 min | 6.4 min |
+| Everything + 1.5× upscaling to 1080p | 4.1 min | 4.8 min | 5.8 min | 10 min |
 
-Measured on 20 seconds of a real 720p60 analog recording (4:3 picture in a 16:9 file) with an Intel Core i7-13850HX laptop on mains power, on the CPU alone ("Previous release" is 0.1.0). Since 0.4.0 the graphics card takes over the heavy part of noise reduction and upscaling; on the same laptop with its NVIDIA RTX 2000 Ada, exports with those steps finished about 10–30 % sooner in first tests. Colour repair alone runs on the CPU and does not change.
+Measured with 0.5.0 on 20 seconds of a real 720p60 analog recording (4:3 picture in a 16:9 file) on a desktop PC with an AMD Ryzen 5 5600 (6 cores, 12 threads), an NVIDIA GeForce RTX 3070 and 32 GB of memory. The last column is the same export with the graphics card switched off (`FLUGBILD_GPU=0`). The GPU makes noise reduction and upscaling about 40 to 50 % faster here; colour repair runs on the CPU and does not change. The raw numbers are in [docs/benchmarks](docs/benchmarks/ryzen5-5600-rtx3070.json).
 
-**Your speed will differ.** It depends on your processor and graphics card: a laptop is held back by its power limit, so desktop processors with more cores and stronger GPUs usually finish sooner, and without a usable GPU everything runs on the CPU as in the table. Recordings at 90 or 180 fps take proportionally longer, because every frame is repaired. To measure your own machine, run [tools/make_speed_chart.py](tools/make_speed_chart.py) on your own timings.
+**Your speed will differ.** It depends on your processor and graphics card: processors with more cores finish sooner, laptops are held back by their power limit, and without a usable GPU everything runs on the CPU as in the last column. Recordings at 90 or 180 fps take proportionally longer, because every frame is repaired. To measure your own machine, run [tools/benchmark.py](tools/benchmark.py) on one of your recordings and draw the chart with [tools/make_speed_chart.py](tools/make_speed_chart.py).
 
 ## How it works
 

@@ -71,7 +71,7 @@ def chart(timings: dict, machine: str) -> str:
                  'Processing time for one minute of analog footage</text>')
     y += 22
     parts.append(f'<text class="soft" x="{LEFT}" y="{y}" font-size="13">'
-                 f'720p at 60 fps, 4:3 picture. CPU and GPU, measured on {machine}; shorter is better.</text>')
+                 f'720p at 60 fps, 4:3 picture. Measured on {machine}. Shorter is better.</text>')
     y += 26
     x = LEFT
     for index, (_, label) in enumerate(EFFORTS, start=1):

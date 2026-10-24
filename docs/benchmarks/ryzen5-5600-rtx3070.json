@@ -1,0 +1,74 @@
+{
+  "fast|colour": {
+    "per_video_second": 1.683,
+    "wall_seconds": 33.7,
+    "gpu": true,
+    "gpu_name": "NVIDIA GeForce RTX 3070"
+  },
+  "balanced|colour": {
+    "per_video_second": 2.061,
+    "wall_seconds": 41.2,
+    "gpu": true,
+    "gpu_name": "NVIDIA GeForce RTX 3070"
+  },
+  "best|colour": {
+    "per_video_second": 2.098,
+    "wall_seconds": 42.0,
+    "gpu": true,
+    "gpu_name": "NVIDIA GeForce RTX 3070"
+  },
+  "cpu-balanced|colour": {
+    "per_video_second": 2.072,
+    "wall_seconds": 41.4,
+    "gpu": false,
+    "gpu_name": ""
+  },
+  "fast|colour+osd+denoise": {
+    "per_video_second": 3.469,
+    "wall_seconds": 69.4,
+    "gpu": true,
+    "gpu_name": "NVIDIA GeForce RTX 3070"
+  },
+  "balanced|colour+osd+denoise": {
+    "per_video_second": 3.93,
+    "wall_seconds": 78.6,
+    "gpu": true,
+    "gpu_name": "NVIDIA GeForce RTX 3070"
+  },
+  "best|colour+osd+denoise": {
+    "per_video_second": 4.629,
+    "wall_seconds": 92.6,
+    "gpu": true,
+    "gpu_name": "NVIDIA GeForce RTX 3070"
+  },
+  "cpu-balanced|colour+osd+denoise": {
+    "per_video_second": 6.423,
+    "wall_seconds": 128.5,
+    "gpu": false,
+    "gpu_name": ""
+  },
+  "fast|all+1.5x": {
+    "per_video_second": 4.149,
+    "wall_seconds": 83.0,
+    "gpu": true,
+    "gpu_name": "NVIDIA GeForce RTX 3070"
+  },
+  "balanced|all+1.5x": {
+    "per_video_second": 4.812,
+    "wall_seconds": 96.2,
+    "gpu": true,
+    "gpu_name": "NVIDIA GeForce RTX 3070"
+  },
+  "best|all+1.5x": {
+    "per_video_second": 5.811,
+    "wall_seconds": 116.2,
+    "gpu": true,
+    "gpu_name": "NVIDIA GeForce RTX 3070"
+  },
+  "cpu-balanced|all+1.5x": {
+    "per_video_second": 10.015,
+    "wall_seconds": 200.3,
+    "gpu": false,
+    "gpu_name": ""
+  }
+}
