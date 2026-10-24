@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=FPV DVR Cleaner
+Comment=Restore analog and HDZero DVR recordings
+Exec=FpvDvrCleaner.Desktop %F
+Icon=fpv-dvr-cleaner
+Categories=AudioVideo;Video;
+MimeType=video/mp4;video/quicktime;video/x-matroska;video/x-msvideo;video/mp2t;
+Terminal=false

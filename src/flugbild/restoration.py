@@ -310,12 +310,16 @@ def preview_frame(source: Path, seconds: float, recipe: Arbeitsrezept, info: Vid
     return frames[middle], result
 
 
+# Seconds of footage decoded before and after a cut as repair context.
+CONTEXT_SECONDS = 0.5
+
+
 def _decoder(source: Path, start: float, seconds: float, fps: float,
              box: tuple[int, int, int, int]) -> list[str]:
     # FFmpeg's timestamp seek is reliable for damaged transport streams; OpenCV's
     # CAP_PROP_POS_MSEC can land several frames before the requested cut.
     args = ["ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error"]
-    if start:
+    if start > 0:
         args.extend(["-ss", f"{start:.6f}"])
     args.extend(["-i", str(source), "-t", f"{seconds:.6f}", "-map", "0:v:0", "-an", "-sn",
                  "-vf", "crop={2}:{3}:{0}:{1}".format(*box), "-r", f"{fps:.6f}",
@@ -332,9 +336,13 @@ def _encoder(size: tuple[int, int], fps: float) -> list[str]:
 def _pump(decoder_args: list[str], encoder_args: list[str], workplace: str | None, size: tuple[int, int],
           frame_limit: int, recipe: Arbeitsrezept,
           fingerprint: Signalsignatur | NeuralProfile | None, osd: Overlay | None,
-          cancel: threading.Event, report: Callable[[int], None]) -> str:
-    """Decode up to ``frame_limit`` frames, run the stages and encode them.
+          cancel: threading.Event, report: Callable[[int], None],
+          skip: int = 0, decode_limit: int | None = None) -> str:
+    """Decode frames, run the stages and encode ``frame_limit`` of them.
 
+    ``skip`` frames before the cut and the frames after it (up to
+    ``decode_limit`` decoded in all) give the first and last frames of the cut
+    real neighbours to be repaired from; they are not written out.
     Returns an error message, or "" on success.
     """
     width, height = size
@@ -353,15 +361,19 @@ def _pump(decoder_args: list[str], encoder_args: list[str], workplace: str | Non
         assert encoder.stdin is not None
 
         def decoded() -> Iterator[np.ndarray]:
-            for _ in range(frame_limit):
+            for _ in range(decode_limit or frame_limit + skip):
                 raw = decoder.stdout.read(frame_bytes)
                 if len(raw) != frame_bytes or cancel.is_set():
                     return
                 yield np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 3)
 
+        passed = 0
         for enhanced in _stages(decoded(), recipe, fingerprint, osd):
             if cancel.is_set() or sent >= frame_limit:
                 break
+            if passed < skip:
+                passed += 1
+                continue
             encoder.stdin.write(enhanced.tobytes())
             sent += 1
             report(sent)
@@ -424,6 +436,12 @@ def process_temporal(source: Path, target: Path, recipe: Arbeitsrezept, info: Vi
         # The stages see the picture only; the bars come back as clean black.
         filters = f"pad={full_width}:{full_height}:{left}:{top}:black," + filters
     frame_limit = max(1, round(duration * fps))
+    # Context around the cut: the repair of the first and last frames can then
+    # draw on neighbours that lie just outside the kept part.
+    lead = min(recipe.schnittbeginn, CONTEXT_SECONDS)
+    tail = max(0.0, min(CONTEXT_SECONDS, info.duration - (recipe.schnittbeginn + duration)))
+    lead_frames = round(lead * fps)
+    decode_limit = lead_frames + frame_limit + round(tail * fps)
     workspace = None
     try:
         workspace = caption_workspace(recipe)
@@ -446,9 +464,10 @@ def process_temporal(source: Path, target: Path, recipe: Arbeitsrezept, info: Vi
         encoder_args.extend(["-t", str(duration), "-vf", filters])
         encoder_args.extend(options)
         encoder_args.extend(["-shortest", str(pending)])
-        message = _pump(_decoder(source, recipe.schnittbeginn, duration, fps, box), encoder_args,
-                        workplace, (width, height), frame_limit, recipe, fingerprint, osd, cancel,
-                        lambda sent: progress(min(1.0, sent / frame_limit)))
+        message = _pump(_decoder(source, recipe.schnittbeginn - lead_frames / fps, lead + duration + tail, fps, box),
+                        encoder_args, workplace, (width, height), frame_limit, recipe, fingerprint, osd, cancel,
+                        lambda sent: progress(min(1.0, sent / frame_limit)),
+                        skip=lead_frames, decode_limit=decode_limit)
         if cancel.is_set():
             return Laufergebnis(source, target, False, "Canceled")
         if message:

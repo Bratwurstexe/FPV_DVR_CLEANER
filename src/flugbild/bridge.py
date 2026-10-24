@@ -18,7 +18,9 @@ from .neural import NeuralProfile, train_network
 from .osd import detect_osd, preview
 from .processor import process_one
 from .recipe import Arbeitsrezept
-from .restoration import clip_mask, preview_frame, process_temporal
+from .restoration import clip_mask, picture_box, preview_frame, process_temporal
+from .segments import audio_outline, concat_files, export_segments, normalize_segments
+from .assess import assess, sample_frames
 
 
 def cached_mask(source: Path, recipe: Arbeitsrezept, info) -> tuple[np.ndarray, np.ndarray] | None:
@@ -45,6 +47,17 @@ def cached_mask(source: Path, recipe: Arbeitsrezept, info) -> tuple[np.ndarray, 
     return overlay
 
 
+def render_cut(source: Path, target: Path, recipe: Arbeitsrezept, info, mode: str, profile, report):
+    """One continuous cut through the pipeline the settings call for."""
+    if mode == "model":
+        return process_temporal(source, target, recipe, info, profile, report, threading.Event())
+    if (recipe.signalart == "analog" or recipe.osd_entfernen or recipe.vergroesserung_prozent != 100
+            or recipe.rauschminderung > 0 or (recipe.signalart == "digital" and recipe.blockpflege > 0)):
+        # Colour and breakup repair, OSD removal, noise reduction and upscaling work frame by frame.
+        return process_temporal(source, target, recipe, info, None, report, threading.Event())
+    return process_one(source, target, recipe, info, report, threading.Event())
+
+
 def emit(kind: str, **fields: object) -> None:
     print(json.dumps({"kind": kind, **fields}, ensure_ascii=True), flush=True)
 
@@ -54,11 +67,21 @@ def run(settings: dict) -> None:
     if action == "inspect":
         info = inspect_video(Path(settings["source"]))
         emit("result", duration=info.duration, width=info.width,
-             height=info.height, audio=info.has_audio)
+             height=info.height, audio=info.has_audio, fps=info.fps)
     elif action == "frame":
+        crop = settings.get("crop")
+        filters = "crop={2}:{3}:{0}:{1}".format(*[int(v) for v in crop]) if crop else ""
         still_frame(Path(settings["source"]), float(settings.get("seconds", 0)),
-                    Path(settings["target"]))
+                    Path(settings["target"]), filters)
         emit("result", target=settings["target"])
+    elif action == "picture":
+        # The 4:3 picture inside the black bars of a 16:9 recording.
+        source = Path(settings["source"])
+        info = inspect_video(source)
+        start = float(settings.get("start", 0))
+        end = float(settings.get("end") or info.duration)
+        x, y, width, height = picture_box(source, start, max(0.2, end - start), info.width, info.height)
+        emit("result", x=x, y=y, width=width, height=height)
     elif action == "osd":
         source, target = Path(settings["source"]), Path(settings["target"])
         info = inspect_video(source)
@@ -115,29 +138,52 @@ def run(settings: dict) -> None:
         emit("result", target=str(destination), samples=profile.samples,
              sources=profile.sources, validation_mae=profile.validation_mae,
              training_runs=profile.training_runs)
+    elif action == "waveform":
+        source = Path(settings["source"])
+        info = inspect_video(source)
+        emit("result", levels=audio_outline(source, info, int(settings.get("buckets", 1500))))
     elif action == "export":
         source, target = Path(settings["source"]), Path(settings["target"])
         recipe = Arbeitsrezept(**settings["recipe"])
         info = inspect_video(source)
         mode = settings["mode"]
-        report = lambda ratio: emit("progress", fraction=ratio)
-        if mode == "manual" and (recipe.signalart == "analog" or recipe.osd_entfernen
-                                 or recipe.vergroesserung_prozent != 100 or recipe.rauschminderung > 0
-                                 or (recipe.signalart == "digital" and recipe.blockpflege > 0)):
-            # Colour and breakup repair, OSD removal, noise reduction and upscaling work frame by frame.
-            result = process_temporal(source, target, recipe, info, None,
-                                      report, threading.Event())
-        elif mode == "manual":
-            result = process_one(source, target, recipe, info, report, threading.Event())
-        elif mode == "model":
-            profile = NeuralProfile.load(Path(settings["model"]))
-            result = process_temporal(source, target, recipe, info, profile,
-                                      report, threading.Event())
-        else:
+        if mode not in {"manual", "model"}:
             raise ValueError("Choose Manual or Trained model")
+        profile = NeuralProfile.load(Path(settings["model"])) if mode == "model" else None
+        report = lambda ratio: emit("progress", fraction=ratio)
+        # Either the kept segments of the trim editor or the single cut of the recipe.
+        segments = normalize_segments(settings.get("segments")
+                                      or [[recipe.schnittbeginn, recipe.schnittende or info.duration]],
+                                      info.duration)
+
+        def render(part_source, part_target, part_recipe, part_report):
+            return render_cut(part_source, part_target, part_recipe, info, mode, profile, part_report)
+
+        result = export_segments(source, target, recipe, info, segments, render, report, threading.Event())
         if not result.success:
             raise RuntimeError(result.message)
-        emit("result", target=str(target))
+        emit("result", target=str(target), segments=segments)
+    elif action == "assess":
+        original, cleaned = Path(settings["source"]), Path(settings["target"])
+        info = inspect_video(original)
+        made = inspect_video(cleaned)
+        segments = normalize_segments(settings.get("segments"), info.duration)
+        # Frames of the original are taken from the kept parts only.
+        before = np.concatenate([sample_frames(original, info, start, end, max(3, 16 // len(segments)))
+                                 for start, end in segments])
+        after = sample_frames(cleaned, made, 0.0, made.duration)
+        emit("result", **assess(before, after, int(settings.get("quality", 18)), settings.get("signal", "analog")))
+    elif action == "merge":
+        parts = [Path(item) for item in settings["sources"]]
+        if len(parts) < 2:
+            raise ValueError("Choose at least two files to merge")
+        shapes = {(inspect_video(part).width, inspect_video(part).height) for part in parts}
+        if len(shapes) > 1:
+            raise ValueError("The clips have different sizes and cannot be merged into one file")
+        result = concat_files(parts, Path(settings["target"]))
+        if not result.success:
+            raise RuntimeError(result.message)
+        emit("result", target=settings["target"])
     else:
         raise ValueError("Unknown desktop action")
 

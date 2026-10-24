@@ -1,0 +1,4 @@
+#!/bin/sh
+# Entry point of the AppImage: start the app from inside the mounted image.
+HERE="$(dirname "$(readlink -f "$0")")"
+exec "$HERE/usr/lib/fpv-dvr-cleaner/FpvDvrCleaner.Desktop" "$@"

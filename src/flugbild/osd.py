@@ -280,8 +280,8 @@ class _Patcher:
                     break
                 here = frame[top:bottom, left:right][rim].astype(np.float32)
                 there = patch[rim].astype(np.float32)
-                offset = (here - there).mean(axis=0)
-                fit = float(np.abs(here - there - offset).mean())
+                offset = _brightness_plane(here - there, rim)
+                fit = float(np.abs(here - there - offset[rim]).mean())
                 if fit < best_fit:
                     best, best_fit = (patch, offset), fit
                     if fit < FIT_LIMIT / 2:
@@ -294,14 +294,44 @@ class _Patcher:
             result[top:bottom, left:right][inside] = corrected[inside]
         if unresolved.any():
             result = _inpaint(result, unresolved, _picture_area(frame), fill_scale)
-        # Soften the seam so analog noise differences do not draw an outline.
-        edge = cv2.GaussianBlur(mask.astype(np.float32) / 255, (7, 7), 0)
+        # Soften the seam so analog noise differences do not draw an outline. The
+        # feather runs outside the graphic only: inside it the refill stays at full
+        # weight, otherwise the overlay would shine through along its edge.
+        edge = cv2.GaussianBlur(cv2.dilate(mask, np.ones((5, 5), np.uint8)).astype(np.float32) / 255, (7, 7), 0)
+        edge = np.maximum(edge, mask.astype(np.float32) / 255)
         return cv2.blendLinear(result, frame, edge, 1 - edge)
+
+
+def _brightness_plane(difference: np.ndarray, rim: np.ndarray) -> np.ndarray:
+    """Per channel, the plane a + b*x + c*y fitted to the rim differences.
+
+    A single offset leaves a visible patch wherever the scene has a gradient,
+    such as sky or a vignette; a plane follows that gradient across the hole.
+    Few rim pixels fall back to the mean offset.
+    """
+    height, width = rim.shape
+    ys, xs = np.nonzero(rim)
+    if len(xs) < 24:
+        mean = difference.mean(axis=0)
+        return np.broadcast_to(mean, (height, width, 3)).astype(np.float32)
+    design = np.column_stack([np.ones(len(xs), np.float32), xs / max(1, width - 1), ys / max(1, height - 1)])
+    coefficients, *_ = np.linalg.lstsq(design, difference, rcond=None)
+    # Keep the slope modest: a steep plane would invent a gradient from noisy rims.
+    coefficients[1:] = np.clip(coefficients[1:], -40, 40)
+    grid_x, grid_y = np.meshgrid(np.arange(width, dtype=np.float32) / max(1, width - 1),
+                                 np.arange(height, dtype=np.float32) / max(1, height - 1))
+    plane = (coefficients[0][None, None, :] + grid_x[:, :, None] * coefficients[1][None, None, :]
+             + grid_y[:, :, None] * coefficients[2][None, None, :])
+    return plane.astype(np.float32)
 
 
 def _inpaint(frame: np.ndarray, mask: np.ndarray, picture: np.ndarray,
              scale: float = 1.0) -> np.ndarray:
     """Spatial fallback: inpaint each region from the picture around it.
+
+    Navier-Stokes inpainting carries the surrounding gradients into the hole
+    and gives the same fill from frame to frame; the fast-marching method left
+    faint streaks that flickered on analog footage.
 
     Below a ``scale`` of one the regions are filled at a reduced size and
     enlarged again: the fill is smooth anyway, and the cost falls with area.
@@ -325,10 +355,10 @@ def _inpaint(frame: np.ndarray, mask: np.ndarray, picture: np.ndarray,
             small_gaps = cv2.dilate(cv2.resize(gaps, size, interpolation=cv2.INTER_NEAREST),
                                     np.ones((3, 3), np.uint8))
             painted = cv2.inpaint(cv2.resize(area, size, interpolation=cv2.INTER_AREA), small_gaps,
-                                  max(2, round(5 * scale)), cv2.INPAINT_TELEA)
+                                  max(2, round(5 * scale)), cv2.INPAINT_NS)
             painted = cv2.resize(painted, area.shape[1::-1], interpolation=cv2.INTER_LINEAR)
         else:
-            painted = cv2.inpaint(area, gaps, 5, cv2.INPAINT_TELEA)
+            painted = cv2.inpaint(area, gaps, 5, cv2.INPAINT_NS)
         area[hole] = painted[hole]
     return result
 

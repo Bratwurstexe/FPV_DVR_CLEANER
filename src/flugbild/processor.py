@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 from typing import Callable
@@ -23,12 +24,32 @@ def _font_file() -> str:
     return "Inter.ttf"
 
 
+def asset_candidates(name: str) -> list[Path]:
+    """Places the bundled asset may live: the source tree and the frozen engine."""
+    places = [Path(__file__).resolve().parent / "assets"]
+    bundle = getattr(sys, "_MEIPASS", None)
+    if bundle:
+        places.append(Path(bundle) / "flugbild" / "assets")
+    places.append(Path(sys.executable).resolve().parent / "_internal" / "flugbild" / "assets")
+    return [place / name for place in dict.fromkeys(places)]
+
+
+def find_asset(name: str) -> Path:
+    for candidate in asset_candidates(name):
+        if candidate.is_file():
+            return candidate
+    looked = ", ".join(str(candidate.parent) for candidate in asset_candidates(name))
+    raise FileNotFoundError(f"The engine file {name} is missing from this installation (looked in {looked}). "
+                            "Please download the package again.")
+
+
 def caption_workspace(plan: Arbeitsrezept) -> tempfile.TemporaryDirectory | None:
     if not plan.untertiteltext:
         return None
+    font = find_asset(_font_file())
     workspace = tempfile.TemporaryDirectory(prefix="fpv-caption-")
     target_dir = Path(workspace.name)
-    shutil.copyfile(Path(__file__).parent / "assets" / "Inter.ttf", target_dir / "Inter.ttf")
+    shutil.copyfile(font, target_dir / _font_file())
     (target_dir / "caption.txt").write_text(plan.untertiteltext, encoding="utf-8")
     return workspace
 

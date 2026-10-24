@@ -7,10 +7,61 @@ Clean up analog and HDZero DVR recordings on your own computer: rainbow stripes,
 | **Windows** 10 / 11 (64-bit) | `FPV-DVR-Cleaner-…-windows-x64.zip` | `FpvDvrCleaner.Desktop.exe` |
 | **macOS**, Apple Silicon (M1 and newer) | `FPV-DVR-Cleaner-…-macos-apple-silicon.zip` | `FPV DVR Cleaner.app` |
 | **macOS**, Intel | `FPV-DVR-Cleaner-…-macos-intel.zip` | `FPV DVR Cleaner.app` |
-| **Linux** (x64) | `FPV-DVR-Cleaner-…-linux-x64.tar.gz` | `./FpvDvrCleaner.Desktop` |
+| **Linux** (x64) | `FPV-DVR-Cleaner-…-linux-x64.AppImage` | `chmod +x` it, then start it |
+| **Linux** (x64), plain folder | `FPV-DVR-Cleaner-…-linux-x64.tar.gz` | `./FpvDvrCleaner.Desktop` |
 | **Source code** | *Source code (zip)* or *(tar.gz)* below | see the README |
 
 `SHA256SUMS.txt` lists the checksum of every package.
+
+## New in 0.5.0
+
+**Trim like in a video editor**
+- The trim page is a real timeline: time ruler, filmstrip track, audio waveform, playhead with a grip. Split the recording at the playhead (`S`), click a part and press `Delete`: the parts before and after close up and a thin cut edge marks the join. Drag the fine `[` `]` edges to trim or to bring footage back, with snapping to cuts, bookmarks and the ruler.
+- Hover over the timeline to scrub, Ctrl+wheel to zoom around the pointer, wheel to scroll, bookmarks (`B`), undo and redo (Ctrl+Z / Ctrl+Y), jump between cut edges (Page Up / Page Down).
+- Playback decodes the real video now, so the preview runs smoothly instead of stepping through thumbnails. It skips the removed parts.
+- The export renders every kept part with the same settings and joins them without re-encoding, so the result is one file.
+- The editor grows with the window; F11 switches to full screen.
+
+**Watch the result, and know how good it is**
+- After the export, original and cleaned clip play side by side or under a wipe, in sync, with the removed parts skipped.
+- Both clips come from one decoder, so they are frame-accurate to each other; nothing drifts at the wipe line.
+- A measurement of grain, colour noise and streaks shows what was gained, how much improvement is still possible without any loss, and what a second pass would cost in detail. *Try other settings* re-exports the original (lossless); *Refine the cleaned file* queues the result for a second pass and warns about the re-encoding loss first.
+- Both buttons pick the settings for the next round from the measurement: whatever artefact is left raises the control that fights it; a second pass also turns off what was already done (OSD removal, upscaling) and keeps the encode near lossless.
+- *Auto refine* does it in one click: settings from the measurement, the original exported again as a new file (nothing is overwritten, exports are numbered).
+- The split line of the comparison views is dragged in the picture itself, on the Repair page and in the finished-clip view.
+
+**Cleaner on one screen**
+- Every page fits the window without scrolling at the default size: the trim editor is a dark, edge-to-edge workspace whose preview takes all spare height, the Repair page has three compact cards, and the export settings fold away once a result is shown so the video gets the room, also in full screen (F11).
+- Buttons, pills and inputs are smaller and lighter throughout.
+- While the engine works (reading clips, rendering a frame, the OSD search, export, training) the page dims and blurs behind one centred progress card, with a cancel button where it applies. The progress bar has a small quad flying at its tip.
+- Previews and the comparison views show the 4:3 picture only; the black side bars of 16:9 recordings are cropped away, and the wipe line runs inside the picture.
+
+**Repair around the cut**
+- Half a second of footage before and after each kept part is decoded as context, so the first and last frames of a part are repaired from real neighbours instead of from one side only.
+
+**Quality of life**
+- Presets for the repair settings, four built in; your last settings come back at the next start.
+- The cut of every recording is remembered, so a file you add again keeps its parts and bookmarks.
+- Export options: file name suffix, join all clips into one video, open the folder when done. The app comes back to the front when an export finishes.
+- Queue: move clips up and down, add a copy of a recording with its own cut.
+- The window starts centred on the screen; the square logo in the corner is gone.
+
+**OSD removal**
+- The refill of each overlay follows the brightness gradient of its surroundings (sky, vignette) instead of using one flat offset, and the seam is feathered only outside the graphic, so no edge of the text shines through.
+- Where no neighbouring frame can fill a region, the spatial fill now carries the surrounding gradients into the hole (Navier-Stokes) instead of the fast-marching method, which left faint streaks that flickered on analog footage. In tests on analog footage the fill flickers about 25 % less.
+
+## New in 0.4.2
+
+**Export folder remembered**
+- The destination folder of the export (and the recordings folder for model training) is saved when you choose it and is back the next time you start the app. The folder picker also opens there. Settings live in `settings.json` next to the trained models, under your user's application data folder.
+
+**Export fixed for good** (issues #1 and #2)
+- 0.4.1 already fixed the failing export (`WinError 267` on Windows, `Errno 2 … flugbild/assets` on Linux). The engine now also finds its bundled font in every package layout and reports a clear message instead of a path error if a file is missing. Every build checks that the files are in the package and runs a real export, with and without a caption, through the frozen engine before a release is published.
+
+**Linux packaging** (issue #2)
+- The Linux build is now also published as an **AppImage**: make it executable and start it, nothing to unpack.
+- The desktop app is one executable on Linux. The hundreds of `.dll` files are gone: they were .NET assemblies, not Windows libraries, but they had no business confusing anyone. Only two native `.so` libraries remain next to it.
+- *Open output folder* now works on Linux and macOS, not just on Windows.
 
 ## New in 0.4.1
 

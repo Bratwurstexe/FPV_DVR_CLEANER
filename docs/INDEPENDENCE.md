@@ -53,6 +53,25 @@ on a thumbnail timeline, and results are compared with a split view. These
 follow from the task and from common video-editing conventions; they are not
 taken from the reference implementation.
 
+## Changes of 24 October 2026
+
+Own work, written from scratch for 0.5.0, with no reference to the other
+application:
+
+- Trim editor: kept parts of a recording as a sorted list of source-time
+  segments, drawn on an output-time axis (`TimelineView.cs`); the export
+  renders each part with the existing pipeline and joins the parts with the
+  FFmpeg concat demuxer (`segments.py`).
+- Smooth preview playback by decoding raw frames through FFmpeg into a
+  `WriteableBitmap` (`FramePlayer.cs`), one process for a synchronised pair.
+- Result assessment: median artefact levels (luma high-pass, chroma high-pass,
+  row-spike ratio, block-seam ratio) of sampled frames, compared with a
+  median-filtered floor (`assess.py`). Heuristic re-encode loss from CRF.
+- OSD refill: plane-fitted brightness offset on the region rim, feather
+  outside the graphic only, Navier-Stokes spatial fallback (`osd.py`).
+- Temporal pipeline decodes half a second of context around each cut
+  (`restoration.py`).
+
 ## Rules for further work
 
 - Develop from this project's own requirements, its own footage, public

@@ -117,6 +117,34 @@ jobs:
             echo "::error title=Engine smoke test on ${{ matrix.rid }}::$(tr '\n' ' ' < smoke.out)"
             exit 1
           fi
+          # The bundled files the engine needs at run time (0.4.0 shipped without them).
+          for asset in Inter.ttf INTER-OFL.txt; do
+            if [ ! -f "app/engine/_internal/flugbild/assets/$asset" ]; then
+              echo "::error title=Engine package on ${{ matrix.rid }}::$asset is missing from engine/_internal/flugbild/assets"; exit 1
+            fi
+          done
+          # A real export through the frozen engine, with and without a caption, started
+          # from another working directory: this is what the desktop app does.
+          mkdir -p smoke-out && cd smoke-out
+          for caption in "" "Smoke test"; do
+            printf '{"action":"export","source":"%s","target":"%s","mode":"manual","recipe":{"signalart":"digital","blockpflege":0,"untertiteltext":"%s"}}' \
+              "$clip" "${clip%.mp4}-cleaned.mp4" "$caption" > export.json
+            PATH="$PWD/../app/ffmpeg:$PATH" "../$engine" export.json | tee export.out
+            if ! grep -q '"result"' export.out || [ ! -s "../smoke-cleaned.mp4" ]; then
+              echo "::error title=Engine export test on ${{ matrix.rid }}::caption='$caption': $(tr '\n' ' ' < export.out)"
+              exit 1
+            fi
+            rm -f ../smoke-cleaned.mp4
+          done
+          # Two kept parts of the trim editor are rendered and joined into one file.
+          printf '{"action":"export","source":"%s","target":"%s","mode":"manual","segments":[[0,0.4],[0.6,1.0]],"recipe":{"signalart":"digital","blockpflege":0}}' "$clip" "${clip%.mp4}-parts.mp4" > parts.json
+          PATH="$PWD/../app/ffmpeg:$PATH" "../$engine" parts.json | tee parts.out
+          if ! grep -q '"result"' parts.out || [ ! -s "../smoke-parts.mp4" ]; then
+            echo "::error title=Engine parts export on ${{ matrix.rid }}::$(tr '\n' ' ' < parts.out)"
+            exit 1
+          fi
+          rm -f ../smoke-parts.mp4
+          cd ..
 
       - name: Archive (Windows)
         if: runner.os == 'Windows'
@@ -128,8 +156,31 @@ jobs:
       - name: Archive (Linux)
         if: runner.os == 'Linux'
         run: |
+          # The desktop app is published as one executable; only native .so files may remain.
+          if ls app/*.dll > /dev/null 2>&1; then
+            echo "::error title=Linux package::managed .dll files found next to the app; PublishSingleFile is not in effect"; exit 1
+          fi
+          cp packaging/linux/fpv-dvr-cleaner.desktop app/
           mv app FPV-DVR-Cleaner
           tar -czf "FPV-DVR-Cleaner-${{ github.ref_name }}-linux-x64.tar.gz" FPV-DVR-Cleaner
+
+      - name: Build the AppImage (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          appdir=AppDir
+          mkdir -p "$appdir/usr/lib/fpv-dvr-cleaner" "$appdir/usr/share/applications" "$appdir/usr/share/icons/hicolor/256x256/apps"
+          cp -r FPV-DVR-Cleaner/. "$appdir/usr/lib/fpv-dvr-cleaner/"
+          cp packaging/linux/AppRun "$appdir/AppRun" && chmod +x "$appdir/AppRun"
+          cp packaging/linux/fpv-dvr-cleaner.desktop "$appdir/"
+          cp packaging/linux/fpv-dvr-cleaner.desktop "$appdir/usr/share/applications/"
+          cp desktop/FpvDvrCleaner.Desktop/Assets/app.png "$appdir/fpv-dvr-cleaner.png"
+          cp desktop/FpvDvrCleaner.Desktop/Assets/app.png "$appdir/usr/share/icons/hicolor/256x256/apps/fpv-dvr-cleaner.png"
+          ln -s fpv-dvr-cleaner.png "$appdir/.DirIcon"
+          curl -sSL -o appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x appimagetool
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run "$appdir" "FPV-DVR-Cleaner-${{ github.ref_name }}-linux-x64.AppImage"
+          chmod +x "FPV-DVR-Cleaner-${{ github.ref_name }}-linux-x64.AppImage"
+          ls -la FPV-DVR-Cleaner-*.AppImage
 
       - name: Build the app bundle (macOS)
         if: runner.os == 'macOS'

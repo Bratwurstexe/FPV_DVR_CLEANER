@@ -6,8 +6,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
-    <Version>0.4.1</Version>
+    <Version>0.5.0</Version>
     <Product>FPV DVR Cleaner</Product>
+  </PropertyGroup>
+
+  <!-- Linux packages ship one executable instead of hundreds of managed .dll files
+       (they are .NET assemblies, not Windows libraries, but they confuse people).
+       The few native .so files stay next to it. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'linux-x64'">
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>false</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <ItemGroup>

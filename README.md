@@ -1,7 +1,7 @@
 > [!IMPORTANT]
 > **Important bug fixed: saving the export.  23.10.2026** In the packages up to 0.4.0 an export could fail with
 > `[WinError 267] The directory name is invalid`, no matter which folder was chosen.
-> This is fixed in 0.4.1. Please download the [latest release](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest).
+> This is fixed since 0.4.1. Please download the [latest release](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest).
 
 <div align="center">
 
@@ -36,11 +36,14 @@ Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, 
 - **Noise reduction and streak repair.** Five motion-aligned frames are fused around a robust median. Grain calms down, bright or dark streaks disappear, and moving edges stay sharp.
 - **OSD removal.** Text, icons and bars that stay in place while the picture moves are found, including warnings that appear only briefly. They are refilled from frames where the scene behind them is visible. Screens that are shown only part of the time, such as the stats after landing, are removed only while they are on screen.
 - **Multi-frame upscaling.** 1.5× (720p to 1080p) or 2×. Neighbouring frames add detail instead of just enlarging a single frame.
-- **Filmstrip trim editor.** A thumbnail timeline with zoom, start and end markers, quick play and keyboard shortcuts (`I`, `O`, `Space`, arrow keys).
-- **Check before you export.** Render any frame through the whole chain and compare original and result with a split slider.
-- **Batch export.** Every clip keeps its own cut. The remaining time is shown live, you can cancel at any moment, and the original audio is kept.
+- **Timeline trim editor.** Cut a recording into parts and remove the ones you don't want, like in a video editor: split at the playhead, click a part, press Delete, and the rest closes up with a visible cut edge. Drag the edges to trim, snap to cuts and bookmarks, hover to scrub, Ctrl+wheel to zoom, undo and redo. The audio track is shown as a waveform, and playback decodes the real video, so it runs smoothly.
+- **Check before you export.** Render any frame through the whole chain and drag the split line across the picture to compare original and result.
+- **Watch the result live.** After the export, original and cleaned clip play side by side (or under a wipe you drag in the picture), frame-accurate to each other, with removed parts skipped. A measurement tells you how much was gained, how much is still possible without any loss, and what a second pass would cost. *Auto refine* picks the settings from that measurement and exports again with one click.
+- **Batch export.** Every clip keeps its own cut. The remaining time is shown live, you can cancel at any moment, and the original audio is kept. Clips can be joined into one video, the file name suffix is yours to choose, and the folder opens when it's done.
+- **Presets and memory.** Save your repair settings as presets. The last settings, the export folder and the cut of every recording come back the next time you start the app.
 - **CPU and GPU together.** Frames are repaired in parallel on every core, the full-resolution work of noise reduction and upscaling runs on the graphics card, black side bars are skipped, and a *Fast / Balanced / Best* setting trades time for quality. Without a usable GPU everything runs on the CPU with the same result. See [Speed](#speed).
 - **Optional local training.** A small self-supervised model can learn your receiver's pixel statistics from your own footage.
+- **One screen, one focus.** Every page fits the window without scrolling, the trim editor is a dark workspace with the preview as large as the window allows, and while the engine works the page blurs behind a single progress card.
 - **Private.** No account, no upload, no telemetry. Everything runs locally.
 
 ## Before and after
@@ -157,9 +160,9 @@ The output is H.264 MP4 with the original audio. Results are written to a tempor
 | ![Repair](docs/media/ui-repair.png) | ![Export](docs/media/ui-export.png) |
 
 1. **Import:** drop recordings onto the window or add a folder.
-2. **Trim:** mark start and end on the filmstrip (`I` / `O`), or type exact times.
-3. **Repair:** choose Analog or HDZero, colour repair, OSD removal, output size and processing speed, then press *Render this frame* to check the result.
-4. **Export:** choose a folder and start. The remaining time is shown live, and you can cancel at any moment.
+2. **Trim:** split the recording at the playhead (`S`), click the parts you don't want and press `Delete`; the kept parts close up. Drag the `[` `]` edges to fine-tune, set bookmarks with `B`, play through the kept parts with `Space`.
+3. **Repair:** pick a preset or choose Analog or HDZero, colour repair, OSD removal, output size and processing speed, then press *Render this frame* to check the result.
+4. **Export:** choose a folder and start. The remaining time is shown live, and you can cancel at any moment. Afterwards, play original and result side by side, read the gain and headroom estimate, and press *Auto refine* to export again with settings chosen from it, or refine the cleaned file in a second pass.
 
 ## Getting started
 
@@ -172,9 +175,12 @@ Get the package for your system from the **[latest release](https://github.com/B
 | Windows 10/11 (64-bit) | `FPV-DVR-Cleaner-…-windows-x64.zip` | `FpvDvrCleaner.Desktop.exe` |
 | macOS, Apple Silicon | `FPV-DVR-Cleaner-…-macos-apple-silicon.zip` | `FPV DVR Cleaner.app` |
 | macOS, Intel | `FPV-DVR-Cleaner-…-macos-intel.zip` | `FPV DVR Cleaner.app` |
-| Linux (x64) | `FPV-DVR-Cleaner-…-linux-x64.tar.gz` | `./FpvDvrCleaner.Desktop` |
+| Linux (x64) | `FPV-DVR-Cleaner-…-linux-x64.AppImage` | `chmod +x` the file, then start it |
+| Linux (x64), plain folder | `FPV-DVR-Cleaner-…-linux-x64.tar.gz` | `./FpvDvrCleaner.Desktop` |
 
-On Windows, SmartScreen may warn about an unknown publisher: choose *More info → Run anyway*. On macOS the app is not notarised: right-click it and choose *Open* the first time.
+On Windows, SmartScreen may warn about an unknown publisher: choose *More info → Run anyway*. On macOS the app is not notarised: right-click it and choose *Open* the first time. On Linux the app needs an X11 or XWayland session (Wayland compositors such as Hyprland or Sway run it through XWayland).
+
+The export folder you choose is remembered between runs. Settings and trained models are kept in `FPV DVR Cleaner` under your user's local application data folder (`%LOCALAPPDATA%` on Windows, `~/.local/share` on Linux, `~/.local/share` or `~/Library/Application Support` on macOS).
 
 ### Requirements (run from source)
 
@@ -213,7 +219,8 @@ The [build workflow](.github/workflows/build.yml) produces packages for Windows,
 - [ ] GPU acceleration for faster exports
 - [x] Ready-to-run packages that include the engine (no Python setup)
 - [ ] Better HDZero repair for long breakups across several frames
-- [ ] Presets per goggles and receiver
+- [x] Presets for repair settings
+- [ ] Automatic detection of take-off and landing as a trim suggestion
 - [ ] German user interface
 
 Ideas and bug reports are welcome in the [issues](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/issues).
