@@ -15,13 +15,18 @@
 Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, paints out the OSD and upscales the result, all on your own computer.
 **Uses your processor and graphics card together, automatically:** the heavy pixel work runs on the GPU (NVIDIA, AMD, Intel or Apple), everything else on all CPU cores, for full speed at the same quality.
 
-## **[⬇ Download for Windows, macOS and Linux](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest)**
+<h2><a href="https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest">⬇ Download for Windows, macOS and Linux</a><br><sub>Ready to run, no Python or FFmpeg setup.</sub></h2>
 
-**Ready to run, no Python or FFmpeg setup.**
+[![Features](https://img.shields.io/badge/Features-20252B?style=for-the-badge)](#features)
+[![Before / after](https://img.shields.io/badge/Before_%2F_after-20252B?style=for-the-badge)](#before-and-after)
+[![Speed](https://img.shields.io/badge/Speed-20252B?style=for-the-badge)](#speed)
+[![How it works](https://img.shields.io/badge/How_it_works-20252B?style=for-the-badge)](#how-it-works)
+[![Workflow](https://img.shields.io/badge/Workflow-20252B?style=for-the-badge)](#the-workflow)
+[![Getting started](https://img.shields.io/badge/Getting_started-A64600?style=for-the-badge)](#getting-started)
+[![Coming soon](https://img.shields.io/badge/Coming_soon-20252B?style=for-the-badge)](#coming-soon)
+[![Licence](https://img.shields.io/badge/Licence-20252B?style=for-the-badge)](#licence)
 
 ![One frame, left half original, right half cleaned](docs/media/hero-split.jpg)
-
-[Download](#download) · [Features](#features) · [Before / after](#before-and-after) · [Speed](#speed) · [How it works](#how-it-works) · [Workflow](#the-workflow) · [Getting started](#getting-started) · [Coming soon](#coming-soon) · [Licence](#licence)
 
 </div>
 
