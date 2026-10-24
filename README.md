@@ -17,14 +17,18 @@ Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, 
 
 <h2><a href="https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest">⬇ Download for Windows, macOS and Linux</a><br><sub>Ready to run, no Python or FFmpeg setup.</sub></h2>
 
-[![Features](https://img.shields.io/badge/Features-20252B?style=for-the-badge)](#features)
-[![Before / after](https://img.shields.io/badge/Before_%2F_after-20252B?style=for-the-badge)](#before-and-after)
-[![Speed](https://img.shields.io/badge/Speed-20252B?style=for-the-badge)](#speed)
-[![How it works](https://img.shields.io/badge/How_it_works-20252B?style=for-the-badge)](#how-it-works)
-[![Workflow](https://img.shields.io/badge/Workflow-20252B?style=for-the-badge)](#the-workflow)
-[![Getting started](https://img.shields.io/badge/Getting_started-A64600?style=for-the-badge)](#getting-started)
-[![Coming soon](https://img.shields.io/badge/Coming_soon-20252B?style=for-the-badge)](#coming-soon)
-[![Licence](https://img.shields.io/badge/Licence-20252B?style=for-the-badge)](#licence)
+<table>
+  <tr>
+    <th><a href="#features">Features</a></th>
+    <th><a href="#before-and-after">Before / after</a></th>
+    <th><a href="#speed">Speed</a></th>
+    <th><a href="#how-it-works">How it works</a></th>
+    <th><a href="#the-workflow">Workflow</a></th>
+    <th><a href="#getting-started">Getting started</a></th>
+    <th><a href="#coming-soon">Coming soon</a></th>
+    <th><a href="#licence">Licence</a></th>
+  </tr>
+</table>
 
 ![One frame, left half original, right half cleaned](docs/media/hero-split.jpg)
 
