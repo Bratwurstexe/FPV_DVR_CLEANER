@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="docs/media/logo-quad.gif" width="140" alt="FPV DVR Cleaner logo: a small quad flying over a progress bar">
+<img src="docs/media/logo.svg" width="260" alt="FPV DVR Cleaner logo: an analog TV with a noisy picture and a small FPV quad hovering beside it">
 
 # FPV DVR Cleaner
 

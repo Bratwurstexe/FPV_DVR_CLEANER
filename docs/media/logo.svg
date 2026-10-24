@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="150" viewBox="0 0 300 150" role="img" aria-label="FPV DVR Cleaner logo: an analog TV with a noisy picture and a small FPV quad hovering beside it">
+  <title>FPV DVR Cleaner</title>
+  <style>
+    .line { stroke: #4a2e1a; }
+    .metal { stroke: #9aa3ab; }
+    .wood { fill: #8a5a36; }
+    .wood-dark { fill: #6d4428; }
+    .bezel { fill: #2b3036; }
+    .frame { fill: #2c3238; }
+    .halo { stroke: #ffffff; }
+    .knob { fill: #d7d2c8; }
+    .shadow { fill: #6e7781; fill-opacity: .28; }
+
+    /* Analog picture: rolling bar, flicker, scan lines */
+    .roll { animation: roll 2.2s linear infinite; }
+    @keyframes roll { from { transform: translateY(-30px); } to { transform: translateY(70px); } }
+    .flicker { animation: flicker .18s steps(2) infinite; }
+    @keyframes flicker { 0% { opacity: .78; } 100% { opacity: .95; } }
+    .tear { animation: tear 1.6s steps(1) infinite; }
+    @keyframes tear { 0%, 70% { transform: translateX(0); opacity: 0; } 72% { transform: translateX(-6px); opacity: .9; } 78% { transform: translateX(5px); opacity: .9; } 84%, 100% { transform: translateX(0); opacity: 0; } }
+
+    /* Quad: hover, slight bank, spinning props, blinking LEDs, signal waves */
+    .quad { animation: hover 1.6s ease-in-out infinite; transform-origin: 222px 78px; }
+    @keyframes hover { 0%, 100% { transform: translateY(-4px) rotate(-3deg); } 50% { transform: translateY(4px) rotate(3deg); } }
+    .quad-shadow { animation: shade 1.6s ease-in-out infinite; transform-origin: 222px 136px; }
+    @keyframes shade { 0%, 100% { transform: scaleX(.8); } 50% { transform: scaleX(1); } }
+    .prop { transform-box: fill-box; transform-origin: center; animation: spin .16s linear infinite; }
+    .prop.ccw { animation-direction: reverse; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .led { animation: blink .8s steps(1) infinite; }
+    @keyframes blink { 0%, 50% { fill: #e5484d; } 51%, 100% { fill: #6b2427; } }
+    .wave { fill: none; stroke: #f08a3a; stroke-width: 2.4; stroke-linecap: round; opacity: 0; animation: wave 1.5s ease-out infinite; }
+    .wave.w2 { animation-delay: .5s; }
+    .wave.w3 { animation-delay: 1s; }
+    @keyframes wave { 0% { opacity: 0; } 20% { opacity: 1; } 100% { opacity: 0; } }
+  </style>
+
+  <defs>
+    <filter id="noise" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.95" numOctaves="1" seed="1">
+        <animate attributeName="seed" values="1;7;3;11;5;13;2;9" dur="0.48s" repeatCount="indefinite" calcMode="discrete"/>
+      </feTurbulence>
+      <feColorMatrix type="matrix" values="1.6 0 0 0 -0.35  0 1.5 0 0 -0.32  0 0 1.7 0 -0.3  0 0 0 0 1"/>
+    </filter>
+    <pattern id="scan" width="4" height="3" patternUnits="userSpaceOnUse">
+      <rect width="4" height="1.2" fill="#000" opacity=".28"/>
+    </pattern>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".22"/>
+      <stop offset=".45" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".5" stop-color="#fff" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="screen"><rect x="30" y="52" width="100" height="70" rx="14"/></clipPath>
+  </defs>
+
+  <!-- TV -->
+  <ellipse class="shadow" cx="88" cy="140" rx="70" ry="5"/>
+  <g class="metal" stroke-width="3" stroke-linecap="round">
+    <line x1="88" y1="40" x2="62" y2="8"/>
+    <line x1="88" y1="40" x2="116" y2="10"/>
+  </g>
+  <circle cx="62" cy="8" r="3.8" class="knob metal" stroke-width="1.5"/>
+  <circle cx="116" cy="10" r="3.8" class="knob metal" stroke-width="1.5"/>
+  <path d="M74 42 Q88 30 102 42 Z" class="bezel line" stroke-width="2.5"/>
+  <rect x="16" y="40" width="144" height="94" rx="14" class="wood line" stroke-width="3"/>
+  <rect x="22" y="46" width="116" height="82" rx="16" class="bezel"/>
+  <g clip-path="url(#screen)">
+    <rect x="30" y="52" width="100" height="70" fill="#7f8c96"/>
+    <rect x="30" y="52" width="100" height="70" filter="url(#noise)" class="flicker"/>
+    <g class="tear">
+      <rect x="30" y="80" width="100" height="5" fill="#e5484d" opacity=".65"/>
+      <rect x="30" y="85" width="100" height="4" fill="#2d9cdb" opacity=".65"/>
+      <rect x="30" y="89" width="100" height="3" fill="#1baf7a" opacity=".6"/>
+    </g>
+    <rect class="roll" x="30" y="52" width="100" height="22" fill="url(#bar)"/>
+    <rect x="30" y="52" width="100" height="70" fill="url(#scan)"/>
+    <rect x="30" y="52" width="100" height="70" fill="url(#glass)"/>
+  </g>
+  <rect x="30" y="52" width="100" height="70" rx="14" fill="none" class="line" stroke-width="2.5"/>
+  <circle cx="149" cy="64" r="5.5" class="knob line" stroke-width="2"/>
+  <line x1="149" y1="64" x2="149" y2="59.5" class="line" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="149" cy="82" r="5.5" class="knob line" stroke-width="2"/>
+  <line x1="149" y1="82" x2="152.5" y2="79" class="line" stroke-width="2" stroke-linecap="round"/>
+  <g class="wood-dark">
+    <rect x="144" y="96" width="10" height="2.5" rx="1"/>
+    <rect x="144" y="101" width="10" height="2.5" rx="1"/>
+    <rect x="144" y="106" width="10" height="2.5" rx="1"/>
+  </g>
+  <rect x="30" y="132" width="12" height="7" rx="2" class="wood-dark line" stroke-width="2"/>
+  <rect x="134" y="132" width="12" height="7" rx="2" class="wood-dark line" stroke-width="2"/>
+
+  <!-- Quad, seen from above, flying towards the TV -->
+  <ellipse class="shadow quad-shadow" cx="222" cy="136" rx="40" ry="4.5"/>
+  <g class="quad">
+    <path class="wave" d="M168 64 Q162 72 168 80"/>
+    <path class="wave w2" d="M160 58 Q151 72 160 86"/>
+    <path class="wave w3" d="M152 52 Q140 72 152 92"/>
+
+    <!-- arms with a light halo, so they read on dark backgrounds too -->
+    <g stroke-linecap="round">
+      <g class="halo" stroke-width="10">
+        <line x1="222" y1="78" x2="192" y2="56"/><line x1="222" y1="78" x2="252" y2="56"/>
+        <line x1="222" y1="78" x2="192" y2="100"/><line x1="222" y1="78" x2="252" y2="100"/>
+      </g>
+      <g stroke="#2c3238" stroke-width="6.5">
+        <line x1="222" y1="78" x2="192" y2="56"/><line x1="222" y1="78" x2="252" y2="56"/>
+        <line x1="222" y1="78" x2="192" y2="100"/><line x1="222" y1="78" x2="252" y2="100"/>
+      </g>
+    </g>
+
+    <!-- prop discs, blades, motors -->
+    <g fill="#8a939b" fill-opacity=".22" stroke="#969ea5" stroke-width="1.4">
+      <circle cx="192" cy="56" r="17"/><circle cx="252" cy="56" r="17"/>
+      <circle cx="192" cy="100" r="17"/><circle cx="252" cy="100" r="17"/>
+    </g>
+    <g fill="#8a939b">
+      <g class="prop"><rect x="177" y="54" width="30" height="4" rx="2"/><circle cx="178" cy="56" r="2.3" fill="#f08a3a"/><circle cx="206" cy="56" r="2.3" fill="#f08a3a"/></g>
+      <g class="prop ccw"><rect x="237" y="54" width="30" height="4" rx="2"/><circle cx="238" cy="56" r="2.3" fill="#f08a3a"/><circle cx="266" cy="56" r="2.3" fill="#f08a3a"/></g>
+      <g class="prop ccw"><rect x="177" y="98" width="30" height="4" rx="2"/><circle cx="178" cy="100" r="2.3" fill="#f08a3a"/><circle cx="206" cy="100" r="2.3" fill="#f08a3a"/></g>
+      <g class="prop"><rect x="237" y="98" width="30" height="4" rx="2"/><circle cx="238" cy="100" r="2.3" fill="#f08a3a"/><circle cx="266" cy="100" r="2.3" fill="#f08a3a"/></g>
+    </g>
+    <g fill="#4b545d" class="halo" stroke-width="1.6">
+      <circle cx="192" cy="56" r="6.5"/><circle cx="252" cy="56" r="6.5"/>
+      <circle cx="192" cy="100" r="6.5"/><circle cx="252" cy="100" r="6.5"/>
+    </g>
+    <g fill="#2c3238">
+      <circle cx="192" cy="56" r="2.4"/><circle cx="252" cy="56" r="2.4"/>
+      <circle cx="192" cy="100" r="2.4"/><circle cx="252" cy="100" r="2.4"/>
+    </g>
+
+    <!-- body, battery and strap, camera with lens at the front (left, towards the TV), antenna and LED at the back -->
+    <rect x="205" y="69" width="34" height="18" rx="5" fill="#2c3238" class="halo" stroke-width="1.8"/>
+    <rect x="214" y="72" width="20" height="12" rx="3" fill="#ffc857"/>
+    <rect x="219" y="71" width="2.4" height="14" fill="#2c3238"/>
+    <rect x="226" y="71" width="2.4" height="14" fill="#2c3238"/>
+    <rect x="195" y="71.5" width="11" height="13" rx="3" fill="#111518" class="halo" stroke-width="1.4"/>
+    <circle cx="196.5" cy="78" r="3.8" fill="#5fa8e8" class="halo" stroke-width="1.2"/>
+    <line x1="239" y1="76" x2="253" y2="68" stroke-linecap="round" class="halo" stroke-width="4.2"/>
+    <line x1="239" y1="76" x2="253" y2="68" stroke="#2c3238" stroke-width="2.2" stroke-linecap="round"/>
+    <circle cx="254" cy="67.5" r="2.6" fill="#2c3238" class="halo" stroke-width="1.2"/>
+    <circle cx="235.5" cy="83" r="2.6" class="led halo" stroke-width="1"/>
+  </g>
+</svg>
