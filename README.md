@@ -4,10 +4,6 @@
 
 # FPV DVR Cleaner
 
-**Open-source restoration for analog and HDZero DVR recordings.**
-Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, paints out the OSD and upscales the result, all on your own computer.
-**Uses your processor and graphics card together, automatically:** the heavy pixel work runs on the GPU (NVIDIA, AMD, Intel or Apple), everything else on all CPU cores, for full speed at the same quality.
-
 [![License: MIT](https://img.shields.io/badge/license-MIT-A64600)](LICENSE)
 [![Open source](https://img.shields.io/badge/open%20source-100%25-2ea44f)](https://github.com/Bratwurstexe/FPV_DVR_CLEANER)
 [![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-5f676d)](#getting-started)
@@ -15,8 +11,13 @@ Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB)](https://www.python.org)
 [![Stars](https://img.shields.io/github/stars/Bratwurstexe/FPV_DVR_CLEANER?style=flat&color=A64600)](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/stargazers)
 
-**[⬇ Download for Windows, macOS and Linux](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest)**: 
-ready to run, no Python or FFmpeg setup.
+**Open-source restoration for analog and HDZero DVR recordings.**
+Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, paints out the OSD and upscales the result, all on your own computer.
+**Uses your processor and graphics card together, automatically:** the heavy pixel work runs on the GPU (NVIDIA, AMD, Intel or Apple), everything else on all CPU cores, for full speed at the same quality.
+
+## **[⬇ Download for Windows, macOS and Linux](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest)**
+
+**Ready to run, no Python or FFmpeg setup.**
 
 ![One frame, left half original, right half cleaned](docs/media/hero-split.jpg)
 
