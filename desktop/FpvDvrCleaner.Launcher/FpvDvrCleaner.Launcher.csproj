@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>../FpvDvrCleaner.Desktop/Assets/app.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <Product>FPV DVR Cleaner Launcher</Product>
+  </PropertyGroup>
+
+  <!-- The launcher is handed around as a single file next to the app it installs,
+       so everything, the native Skia libraries included, goes into one executable. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="../FpvDvrCleaner.Desktop/Assets/app.png" Link="Assets/app.png" />
+  </ItemGroup>
+</Project>

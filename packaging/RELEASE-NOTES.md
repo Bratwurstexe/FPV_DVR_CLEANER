@@ -1,3 +1,7 @@
+> [!IMPORTANT]
+> **Want to stay up to date? Download the launcher.** It always installs the newest FPV DVR Cleaner: pick your system, and it downloads the latest release, checks it, deletes the old version and starts the app.
+> **[⬇ Windows](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-windows-x64.exe)** · **[macOS Apple Silicon](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-macos-apple-silicon.zip)** · **[macOS Intel](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-macos-intel.zip)** · **[Linux](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-linux-x64.tar.gz)**
+
 Clean up analog and HDZero DVR recordings on your own computer: rainbow stripes, colour dropouts, HDZero breakups, noise and the OSD. Unpack and start; the app, the video engine and FFmpeg are included, so you don't need to install Python or FFmpeg.
 
 ## Download
@@ -9,9 +13,18 @@ Clean up analog and HDZero DVR recordings on your own computer: rainbow stripes,
 | **macOS**, Intel | `FPV-DVR-Cleaner-…-macos-intel.zip` | `FPV DVR Cleaner.app` |
 | **Linux** (x64) | `FPV-DVR-Cleaner-…-linux-x64.AppImage` | `chmod +x` it, then start it |
 | **Linux** (x64), plain folder | `FPV-DVR-Cleaner-…-linux-x64.tar.gz` | `./FpvDvrCleaner.Desktop` |
+| **Launcher** (recommended), Windows | `FPV-DVR-Cleaner-Launcher-windows-x64.exe` | double-click it |
+| **Launcher**, macOS | `FPV-DVR-Cleaner-Launcher-macos-….zip` | `FPV DVR Cleaner Launcher.app` |
+| **Launcher**, Linux | `FPV-DVR-Cleaner-Launcher-linux-x64.tar.gz` | `./FPV-DVR-Cleaner-Launcher` |
 | **Source code** | *Source code (zip)* or *(tar.gz)* below | see the README |
 
 `SHA256SUMS.txt` lists the checksum of every package.
+
+## New: the launcher
+
+- **One small program that keeps FPV DVR Cleaner up to date** on Windows, macOS and Linux. It detects your system and preselects it; you can still pick another one, for example to fetch the Mac version on a PC.
+- It downloads the newest release, checks its SHA-256 checksum, unpacks it next to itself (or into a folder you choose and that it remembers), deletes the old version and any leftover downloads, and starts the app.
+- Safe by design: the old version stays until the new one is complete; a running app, a full disk, a read-only folder or a broken connection stop the update with a clear message and nothing changed. Downloads resume after a dropped connection, and an install cut off by a crash or power loss is undone at the next start.
 
 ## New in 0.5.0
 

@@ -146,6 +146,29 @@ jobs:
           rm -f ../smoke-parts.mp4
           cd ..
 
+      - name: Build the launcher
+        run: |
+          dotnet publish desktop/FpvDvrCleaner.Launcher/FpvDvrCleaner.Launcher.csproj -c Release -r ${{ matrix.rid }} -o launcher
+          case "${{ matrix.rid }}" in
+            win-x64)
+              cp launcher/FpvDvrCleaner.Launcher.exe FPV-DVR-Cleaner-Launcher-windows-x64.exe ;;
+            linux-x64)
+              # A tar.gz keeps the executable bit that a plain download would lose.
+              mkdir -p launcher-pkg && cp launcher/FpvDvrCleaner.Launcher launcher-pkg/FPV-DVR-Cleaner-Launcher
+              chmod +x launcher-pkg/FPV-DVR-Cleaner-Launcher
+              tar -czf FPV-DVR-Cleaner-Launcher-linux-x64.tar.gz -C launcher-pkg FPV-DVR-Cleaner-Launcher ;;
+            osx-*)
+              bundle="FPV DVR Cleaner Launcher.app"
+              mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
+              cp launcher/FpvDvrCleaner.Launcher "$bundle/Contents/MacOS/" && chmod +x "$bundle/Contents/MacOS/FpvDvrCleaner.Launcher"
+              version="${{ github.ref_name }}"
+              sed "s/@VERSION@/${version#v}/" packaging/launcher-Info.plist > "$bundle/Contents/Info.plist"
+              codesign --force --deep --sign - "$bundle" || true
+              arch=$([ "${{ matrix.rid }}" = osx-arm64 ] && echo apple-silicon || echo intel)
+              ditto -c -k --keepParent "$bundle" "FPV-DVR-Cleaner-Launcher-macos-$arch.zip" ;;
+          esac
+          ls -la FPV-DVR-Cleaner-Launcher-*
+
       - name: Archive (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -215,6 +238,20 @@ jobs:
           pattern: FPV-DVR-Cleaner-*
           path: release-assets
           merge-multiple: true
+      # The launcher finds packages by these exact names; a release without one of them
+      # would leave that system without updates.
+      - name: Check the package names the launcher expects
+        run: |
+          for suffix in windows-x64.zip macos-apple-silicon.zip macos-intel.zip linux-x64.AppImage linux-x64.tar.gz; do
+            if [ ! -s "release-assets/FPV-DVR-Cleaner-${{ github.ref_name }}-$suffix" ]; then
+              echo "::error title=Release assets::FPV-DVR-Cleaner-${{ github.ref_name }}-$suffix is missing"; exit 1
+            fi
+          done
+          for launcher in windows-x64.exe linux-x64.tar.gz macos-apple-silicon.zip macos-intel.zip; do
+            if [ ! -s "release-assets/FPV-DVR-Cleaner-Launcher-$launcher" ]; then
+              echo "::error title=Release assets::FPV-DVR-Cleaner-Launcher-$launcher is missing"; exit 1
+            fi
+          done
       - name: Checksums
         run: cd release-assets && sha256sum FPV-DVR-Cleaner-* > SHA256SUMS.txt && cat SHA256SUMS.txt
       # GitHub adds the source code (zip and tar.gz) to every release by itself.

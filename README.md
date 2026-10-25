@@ -1,3 +1,10 @@
+> [!IMPORTANT]
+> ### Want to stay up to date? Download the launcher.
+> **The launcher always gets you the newest FPV DVR Cleaner.** Pick your system, and it downloads the latest release into its own folder (or a folder you choose), checks it, deletes the old version and starts the app.
+>
+> **[⬇ Launcher for Windows](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-windows-x64.exe)**&ensp;·&ensp;**[macOS Apple Silicon](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-macos-apple-silicon.zip)**&ensp;·&ensp;**[macOS Intel](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-macos-intel.zip)**&ensp;·&ensp;**[Linux](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-linux-x64.tar.gz)**
+>
+> <img src="docs/media/launcher.png" width="620" alt="The FPV DVR Cleaner launcher: Windows, macOS and Linux to choose from, the install folder, and an Install and open button">
 
 
 <div align="center">
@@ -171,7 +178,9 @@ The output is H.264 MP4 with the original audio. Results are written to a tempor
 
 ### Download
 
-Get the package for your system from the **[latest release](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest)**. It contains the app, the video engine and FFmpeg. Unpack it and start it; nothing else has to be installed.
+**Easiest: the launcher.** Download the launcher for your system (links at the [top of this page](#fpv-dvr-cleaner)), put it in a folder of your choice and start it. Your system is detected and preselected, but you can pick another one. It downloads the newest release, verifies its SHA-256 checksum, unpacks it next to itself, removes the old version and starts the app. Start it again whenever you like: it updates only when there is something new. You can choose another install folder at any time; the choice is remembered.
+
+Or get the package for your system from the **[latest release](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest)** yourself. It contains the app, the video engine and FFmpeg. Unpack it and start it; nothing else has to be installed.
 
 | System | File | Start |
 |---|---|---|
@@ -181,7 +190,7 @@ Get the package for your system from the **[latest release](https://github.com/B
 | Linux (x64) | `FPV-DVR-Cleaner-…-linux-x64.AppImage` | `chmod +x` the file, then start it |
 | Linux (x64), plain folder | `FPV-DVR-Cleaner-…-linux-x64.tar.gz` | `./FpvDvrCleaner.Desktop` |
 
-On Windows, SmartScreen may warn about an unknown publisher: choose *More info → Run anyway*. On macOS the app is not notarised: right-click it and choose *Open* the first time. On Linux the app needs an X11 or XWayland session (Wayland compositors such as Hyprland or Sway run it through XWayland).
+On Windows, SmartScreen may warn about an unknown publisher: choose *More info → Run anyway*. On macOS the app is not notarised: right-click it and choose *Open* the first time. The launcher gets the same one-time questions (on macOS: right-click *FPV DVR Cleaner Launcher.app* → *Open*; on Linux: unpack it and start `FPV-DVR-Cleaner-Launcher`); the app it installs then starts without them. On Linux the app needs an X11 or XWayland session (Wayland compositors such as Hyprland or Sway run it through XWayland).
 
 The export folder you choose is remembered between runs. Settings and trained models are kept in `FPV DVR Cleaner` under your user's local application data folder (`%LOCALAPPDATA%` on Windows, `~/.local/share` on Linux, `~/.local/share` or `~/Library/Application Support` on macOS).
 

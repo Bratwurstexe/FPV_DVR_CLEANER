@@ -1,0 +1,202 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FpvDvrCleaner.Launcher.MainWindow" Title="FPV DVR Cleaner Launcher"
+        Icon="avares://FpvDvrCleaner.Launcher/Assets/app.png" Width="860" SizeToContent="Height" CanResize="False"
+        Background="#14181C" WindowStartupLocation="CenterScreen">
+  <Window.Styles>
+    <Style Selector="TextBlock"><Setter Property="Foreground" Value="#ECEFF1"/></Style>
+    <Style Selector="TextBlock.eyebrow"><Setter Property="FontSize" Value="11"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="#F0A060"/><Setter Property="LetterSpacing" Value="1.2"/></Style>
+    <Style Selector="TextBlock.muted"><Setter Property="Foreground" Value="#98A2AA"/><Setter Property="TextWrapping" Value="Wrap"/></Style>
+
+    <!-- A system card: the whole card is the radio button. -->
+    <Style Selector="RadioButton.system">
+      <Setter Property="Background" Value="#1D2329"/>
+      <Setter Property="BorderBrush" Value="#2C343C"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="Card" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="2" CornerRadius="16" Padding="20,18">
+            <ContentPresenter Content="{TemplateBinding Content}"/>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15"/>
+          <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="RadioButton.system:pointerover"><Setter Property="Background" Value="#232A31"/><Setter Property="BorderBrush" Value="#3A444E"/></Style>
+    <Style Selector="RadioButton.system:checked"><Setter Property="Background" Value="#2A1F17"/><Setter Property="BorderBrush" Value="#E07A2E"/></Style>
+    <Style Selector="RadioButton.system Path.icon"><Setter Property="Fill" Value="#C9D0D6"/><Setter Property="Stroke" Value="#C9D0D6"/></Style>
+    <Style Selector="RadioButton.system:checked Path.icon"><Setter Property="Fill" Value="#F59A4F"/><Setter Property="Stroke" Value="#F59A4F"/></Style>
+
+    <Style Selector="RadioButton.segment">
+      <Setter Property="Foreground" Value="#C9D0D6"/>
+      <Setter Property="Background" Value="#1D2329"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}" CornerRadius="10" Padding="16,8">
+            <ContentPresenter Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" FontWeight="SemiBold" FontSize="13" HorizontalAlignment="Center"/>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="RadioButton.segment:pointerover"><Setter Property="Background" Value="#262E35"/></Style>
+    <Style Selector="RadioButton.segment:checked"><Setter Property="Background" Value="#E07A2E"/><Setter Property="Foreground" Value="#1A1108"/></Style>
+
+    <Style Selector="Button"><Setter Property="CornerRadius" Value="10"/><Setter Property="Padding" Value="16,9"/><Setter Property="FontSize" Value="13"/><Setter Property="Background" Value="#252C33"/><Setter Property="Foreground" Value="#ECEFF1"/><Setter Property="Cursor" Value="Hand"/></Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#303840"/><Setter Property="Foreground" Value="White"/></Style>
+    <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#3A434C"/><Setter Property="Foreground" Value="White"/></Style>
+    <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#1D2329"/><Setter Property="Foreground" Value="#69737B"/></Style>
+    <Style Selector="Button.primary"><Setter Property="Background" Value="#E07A2E"/><Setter Property="Foreground" Value="#1A1108"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="FontSize" Value="14"/><Setter Property="Padding" Value="24,11"/><Setter Property="MinWidth" Value="220"/><Setter Property="HorizontalContentAlignment" Value="Center"/></Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#F08A3C"/><Setter Property="Foreground" Value="#1A1108"/></Style>
+    <Style Selector="Button.primary:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#C9691F"/><Setter Property="Foreground" Value="#1A1108"/></Style>
+    <Style Selector="Button.primary:disabled /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#4A3626"/><Setter Property="Foreground" Value="#A08A78"/></Style>
+    <Style Selector="Button.link"><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#F0A060"/><Setter Property="Padding" Value="6,4"/></Style>
+    <Style Selector="Button.link:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#22282E"/><Setter Property="Foreground" Value="#FFB878"/></Style>
+
+    <Style Selector="ProgressBar"><Setter Property="Foreground" Value="#E07A2E"/><Setter Property="Background" Value="#262E35"/><Setter Property="Height" Value="8"/><Setter Property="MinHeight" Value="8"/><Setter Property="CornerRadius" Value="4"/></Style>
+  </Window.Styles>
+
+  <StackPanel>
+    <!-- Header -->
+    <Border Padding="32,28,32,26">
+      <Border.Background>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+          <GradientStop Offset="0" Color="#3A2312"/>
+          <GradientStop Offset="0.55" Color="#1B1C1E"/>
+          <GradientStop Offset="1" Color="#14181C"/>
+        </LinearGradientBrush>
+      </Border.Background>
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="18">
+        <Border Width="64" Height="64" CornerRadius="16" ClipToBounds="True" Background="#22282E">
+          <Image Source="avares://FpvDvrCleaner.Launcher/Assets/app.png" Stretch="UniformToFill"/>
+        </Border>
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+          <TextBlock Text="FPV DVR Cleaner" FontSize="26" FontWeight="Bold"/>
+          <TextBlock Text="Launcher · always the newest version, nothing left behind" Classes="muted" FontSize="13"/>
+        </StackPanel>
+        <Border Grid.Column="2" VerticalAlignment="Center" Background="#2A1F17" BorderBrush="#5A3A20" BorderThickness="1" CornerRadius="20" Padding="14,7">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Ellipse x:Name="ReleaseDot" Width="8" Height="8" Fill="#98A2AA" VerticalAlignment="Center"/>
+            <TextBlock x:Name="ReleaseLabel" Text="Checking for updates…" FontSize="12" FontWeight="SemiBold" Foreground="#F0C49C"/>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Border>
+
+    <StackPanel Margin="32,8,32,28" Spacing="18">
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+        <TextBlock Text="1  CHOOSE YOUR SYSTEM" Classes="eyebrow" VerticalAlignment="Center"/>
+        <Border Grid.Column="1" HorizontalAlignment="Right" Background="#1C2A22" CornerRadius="10" Padding="12,6">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Ellipse Width="8" Height="8" Fill="#4CC38A" VerticalAlignment="Center"/>
+            <TextBlock x:Name="DetectedLabel" FontSize="12" Foreground="#B9E8CF" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+      </Grid>
+      <Grid ColumnDefinitions="*,*,*" ColumnSpacing="14">
+        <RadioButton x:Name="WindowsCard" Classes="system" GroupName="system" IsCheckedChanged="System_Changed">
+          <StackPanel Spacing="12">
+            <Grid ColumnDefinitions="*,Auto">
+              <Path Classes="icon" HorizontalAlignment="Left" Width="30" Height="30" Stretch="Uniform" StrokeThickness="0"
+                    Data="M0,0 H10 V10 H0 Z M12,0 H22 V10 H12 Z M0,12 H10 V22 H0 Z M12,12 H22 V22 H12 Z"/>
+              <Border x:Name="WindowsHere" Grid.Column="1" IsVisible="False" Background="#33E07A2E" CornerRadius="8" Padding="8,3" VerticalAlignment="Top"><TextBlock Text="This PC" FontSize="10" FontWeight="Bold" Foreground="#F59A4F"/></Border>
+            </Grid>
+            <StackPanel Spacing="2">
+              <TextBlock Text="Windows" FontSize="18" FontWeight="SemiBold"/>
+              <TextBlock Text="Windows 10 and 11 · 64-bit" Classes="muted" FontSize="12"/>
+            </StackPanel>
+            <TextBlock x:Name="WindowsStatus" Text="Not installed" FontSize="12" FontWeight="SemiBold" Foreground="#98A2AA"/>
+          </StackPanel>
+        </RadioButton>
+        <RadioButton x:Name="MacCard" Grid.Column="1" Classes="system" GroupName="system" IsCheckedChanged="System_Changed">
+          <StackPanel Spacing="12">
+            <Grid ColumnDefinitions="*,Auto">
+              <Path Classes="icon" HorizontalAlignment="Left" Width="34" Height="30" Stretch="Uniform" StrokeThickness="0"
+                    Data="M4,1 H22 A2,2 0 0 1 24,3 V15 H2 V3 A2,2 0 0 1 4,1 Z M4,3.5 V13 H22 V3.5 Z M0,16.5 H26 L24.5,19 H1.5 Z"/>
+              <Border x:Name="MacHere" Grid.Column="1" IsVisible="False" Background="#33E07A2E" CornerRadius="8" Padding="8,3" VerticalAlignment="Top"><TextBlock Text="This Mac" FontSize="10" FontWeight="Bold" Foreground="#F59A4F"/></Border>
+            </Grid>
+            <StackPanel Spacing="2">
+              <TextBlock Text="macOS" FontSize="18" FontWeight="SemiBold"/>
+              <TextBlock Text="macOS 12 or newer" Classes="muted" FontSize="12"/>
+            </StackPanel>
+            <TextBlock x:Name="MacStatus" Text="Not installed" FontSize="12" FontWeight="SemiBold" Foreground="#98A2AA"/>
+          </StackPanel>
+        </RadioButton>
+        <RadioButton x:Name="LinuxCard" Grid.Column="2" Classes="system" GroupName="system" IsCheckedChanged="System_Changed">
+          <StackPanel Spacing="12">
+            <Grid ColumnDefinitions="*,Auto">
+              <Path Classes="icon" HorizontalAlignment="Left" Width="32" Height="30" Stretch="Uniform" StrokeThickness="0"
+                    Data="M3,0 H23 A3,3 0 0 1 26,3 V19 A3,3 0 0 1 23,22 H3 A3,3 0 0 1 0,19 V3 A3,3 0 0 1 3,0 Z M2.5,5 V19 A0.5,0.5 0 0 0 3,19.5 H23 A0.5,0.5 0 0 0 23.5,19 V5 Z M5.5,8 L10.5,11.5 L5.5,15 L4.5,13.6 L7.6,11.5 L4.5,9.4 Z M12,14.5 H19 V16.5 H12 Z"/>
+              <Border x:Name="LinuxHere" Grid.Column="1" IsVisible="False" Background="#33E07A2E" CornerRadius="8" Padding="8,3" VerticalAlignment="Top"><TextBlock Text="This PC" FontSize="10" FontWeight="Bold" Foreground="#F59A4F"/></Border>
+            </Grid>
+            <StackPanel Spacing="2">
+              <TextBlock Text="Linux" FontSize="18" FontWeight="SemiBold"/>
+              <TextBlock Text="x64 · X11 or XWayland" Classes="muted" FontSize="12"/>
+            </StackPanel>
+            <TextBlock x:Name="LinuxStatus" Text="Not installed" FontSize="12" FontWeight="SemiBold" Foreground="#98A2AA"/>
+          </StackPanel>
+        </RadioButton>
+      </Grid>
+
+      <!-- Package choice for the selected system -->
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14" MinHeight="38">
+        <TextBlock Text="PACKAGE" Classes="eyebrow" Width="150" VerticalAlignment="Center"/>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <RadioButton x:Name="WindowsX64" Classes="segment" GroupName="variant" Content="64-bit (.zip)" IsCheckedChanged="Variant_Changed"/>
+          <RadioButton x:Name="MacArm" Classes="segment" GroupName="variant" Content="Apple Silicon" IsCheckedChanged="Variant_Changed"/>
+          <RadioButton x:Name="MacIntel" Classes="segment" GroupName="variant" Content="Intel" IsCheckedChanged="Variant_Changed"/>
+          <RadioButton x:Name="LinuxAppImage" Classes="segment" GroupName="variant" Content="AppImage" IsCheckedChanged="Variant_Changed"/>
+          <RadioButton x:Name="LinuxFolder" Classes="segment" GroupName="variant" Content="Folder (.tar.gz)" IsCheckedChanged="Variant_Changed"/>
+          <TextBlock x:Name="VariantNote" Classes="muted" FontSize="12" VerticalAlignment="Center" Margin="6,0,0,0"/>
+        </StackPanel>
+      </Grid>
+
+      <!-- Install folder -->
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+        <TextBlock Text="2  INSTALL FOLDER" Classes="eyebrow" Width="150" VerticalAlignment="Center"/>
+        <Border Grid.Column="1" Background="#1D2329" CornerRadius="10" Padding="14,9">
+          <StackPanel Spacing="2">
+            <TextBlock x:Name="FolderLabel" FontSize="13" FontFamily="Consolas, Menlo, monospace" TextTrimming="PathSegmentEllipsis" TextWrapping="NoWrap"/>
+            <TextBlock x:Name="FolderNote" Classes="muted" FontSize="11"/>
+          </StackPanel>
+        </Border>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Button x:Name="ChangeFolderButton" Content="Change…" Click="ChangeFolder_Click"/>
+          <Button x:Name="ResetFolderButton" Content="Use launcher folder" Click="ResetFolder_Click"/>
+          <Button x:Name="FolderButton" Content="Open" Click="Folder_Click"/>
+        </StackPanel>
+      </Grid>
+
+      <!-- Action -->
+      <Border Background="#1A1F24" BorderBrush="#2A3138" BorderThickness="1" CornerRadius="16" Padding="22,20">
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="20">
+          <StackPanel Spacing="4" VerticalAlignment="Center">
+            <TextBlock x:Name="ActionTitle" Text="Looking for the newest release…" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <TextBlock x:Name="ActionDetail" Text="" Classes="muted" FontSize="12"/>
+          </StackPanel>
+          <Button x:Name="PrimaryButton" Grid.Column="1" Classes="primary" Content="Please wait" IsEnabled="False" VerticalAlignment="Center" Click="Primary_Click"/>
+          <StackPanel x:Name="ProgressPanel" Grid.Row="1" Grid.ColumnSpan="2" Spacing="8" Margin="0,16,0,0" IsVisible="False">
+            <ProgressBar x:Name="Progress" Minimum="0" Maximum="1"/>
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock x:Name="ProgressStage" Classes="muted" FontSize="12"/>
+              <TextBlock x:Name="ProgressNumbers" Grid.Column="1" Classes="muted" FontSize="12" FontFeatures="tnum"/>
+            </Grid>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Footer -->
+      <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+        <TextBlock Text="Downloads come straight from the project's GitHub releases and are checked against their SHA-256 checksum." Classes="muted" FontSize="11" VerticalAlignment="Center"/>
+        <Button Grid.Column="1" Classes="link" Content="Log" Click="Log_Click"/>
+        <Button Grid.Column="2" Classes="link" Content="What's new" Click="Notes_Click"/>
+        <Button Grid.Column="3" Classes="link" Content="GitHub" Click="Project_Click"/>
+      </Grid>
+    </StackPanel>
+  </StackPanel>
+</Window>
