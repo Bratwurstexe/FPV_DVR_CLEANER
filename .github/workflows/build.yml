@@ -70,10 +70,17 @@ jobs:
           if ! ffmpeg-bundle/ffmpeg -hide_banner -encoders | grep -q libx264; then
             echo "::error title=FFmpeg::The downloaded FFmpeg has no libx264 encoder"; exit 1
           fi
-          echo "$PWD/ffmpeg-bundle" >> "$GITHUB_PATH"
+          # Windows programs (Python) need a Windows path here; "/d/a/…" from Git Bash is not found.
+          if command -v cygpath >/dev/null 2>&1; then cygpath -w "$PWD/ffmpeg-bundle"; else echo "$PWD/ffmpeg-bundle"; fi >> "$GITHUB_PATH"
 
       - name: Install the engine dependencies
         run: python -m pip install "numpy>=2,<3" "opencv-python-headless>=4.10,<6" "pyinstaller>=6.10"
+
+      # The engine tests skip everything that needs FFmpeg when it is missing; on Windows they
+      # did so unnoticed for a long time. Without FFmpeg visible to Python the build stops here.
+      - name: Check that the tests see FFmpeg
+        run: |
+          python -c "import shutil, sys; found = [t for t in ('ffmpeg', 'ffprobe') if shutil.which(t)]; print('FFmpeg tools on PATH:', found); sys.exit(0 if len(found) == 2 else 1)" || { echo "::error title=FFmpeg::ffmpeg and ffprobe are not on PATH for Python, so the engine tests would skip"; exit 1; }
 
       - name: Test the video engine
         run: |

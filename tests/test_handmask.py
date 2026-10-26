@@ -10,6 +10,7 @@ import numpy as np
 
 from flugbild import handmask
 from flugbild.bridge import run
+from flugbild.media import tools_available
 from flugbild.osd import find_osd, remove_stream
 from flugbild.recipe import Arbeitsrezept
 from flugbild.restoration import _crop, encoder_detail
@@ -112,6 +113,7 @@ class RemovalTest(unittest.TestCase):
             np.testing.assert_array_equal(result[inside], original[inside])
 
 
+@unittest.skipUnless(tools_available(), "FFmpeg is required")
 class BridgeTest(unittest.TestCase):
     def test_osd_action_merges_the_hand_mask(self):
         with tempfile.TemporaryDirectory() as workdir:
