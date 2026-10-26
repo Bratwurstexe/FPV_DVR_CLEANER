@@ -27,6 +27,18 @@ All packages include the app, the video engine and FFmpeg: unpack and start, not
 **Cleaner buttons**
 - The zoom, transport and queue buttons use drawn icons, centred exactly; disabled queue arrows fade instead of changing colour.
 
+**Repair in two simple questions**
+- The Repair page asks *Signal* (Analog or HDZero, preselected from the recording when it is clear) and *How bad is it?* (Light, Normal, Strong), with one plain line about what that does. *Best quality* switches on 1080p upscaling and the Best speed in one go.
+- **OSD: Keep or Remove.** With Remove, **Fix by hand…** opens a mask editor over the page: the frame large with the found OSD in orange. Paint or box in what the search missed (small icons, REC) and keep what it took by mistake; undo, redo and *Reset to automatic*. The corrections are kept per recording and used in the preview and the export.
+- **My presets** is a short list of your own settings with Rename, Update with current settings and Delete; presets from earlier versions are in it.
+- Everything else (output size, speed, each repair as a slider, the trained model) is under **Advanced**, with a *Show* button per repair that renders the frame without and with only that effect.
+- The big before/after frame updates on its own shortly after a change. The page fits the window without scrolling, down to 1080×700.
+- One slim slider style in the whole app.
+
+**Export by purpose**
+- Choose what the video is for: *Share & play anywhere* (MP4 H.264), *Smallest file* (MP4 H.265), *For video editing* (MOV ProRes 422) or *For the web* (WebM). Quality, size limit, caption, file name, joining and MKV are under *More options*.
+- Without a chosen folder the files go to a *Cleaned* folder next to the first clip. Progress, remaining time and Cancel sit right under the big Export button.
+
 Earlier versions: see the [changelog](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/blob/main/CHANGELOG.md).
 
 ## First start

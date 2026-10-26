@@ -22,9 +22,12 @@ public partial class MainWindow : Window
         public int Width { get; } = width;
         public int Height { get; } = height;
         public double Fps { get; } = fps;
+        /// <summary>Hand corrections of the OSD mask for this recording (a PNG in the settings folder), or null.</summary>
+        public string? ManualMask { get; set; }
         /// <summary>The picture inside black side bars; null until measured or when there are none.</summary>
         public (int X, int Y, int Width, int Height)? Box { get; set; }
         public bool BoxRequested { get; set; }
+        public bool BoxMeasured { get; set; }
         /// <summary>The kept parts, sorted and non-overlapping; at least one.</summary>
         public List<(double In, double Out)> Segments { get; set; } = [(0, duration)];
         public List<double> Bookmarks { get; set; } = [];
@@ -41,8 +44,8 @@ public partial class MainWindow : Window
 
         public FootageItem Copy()
         {
-            var copy = new FootageItem(Path, Duration, HasAudio, Width, Height, Fps) { Box = Box, BoxRequested = BoxRequested, Segments = Segments.ToList(), Bookmarks = Bookmarks.ToList(),
-                Waveform = Waveform, WaveformRequested = WaveformRequested, StripRequested = StripRequested };
+            var copy = new FootageItem(Path, Duration, HasAudio, Width, Height, Fps) { Box = Box, BoxRequested = BoxRequested, BoxMeasured = BoxMeasured, Segments = Segments.ToList(), Bookmarks = Bookmarks.ToList(),
+                Waveform = Waveform, WaveformRequested = WaveformRequested, StripRequested = StripRequested, ManualMask = ManualMask };
             copy.Strip.AddRange(Strip);
             return copy;
         }
@@ -125,13 +128,13 @@ public partial class MainWindow : Window
         Opened += async (_, _) =>
         {
             RestoreSettings();
-            RefreshPresetChoices();
+            SetUpRepairPage();
             RefreshModelChoices(); RefreshResumeChoices(); ShowPage(0); UpdateCompare();
             // Files passed on the command line ("Open with", dropped on the exe) join the queue.
             var given = Environment.GetCommandLineArgs().Skip(1).Where(File.Exists).ToList();
             if (given.Count > 0) await AddFilesAsync(given);
         };
-        Closing += (_, _) => { _player.Dispose(); _reviewPair.Dispose(); RememberSettings(); };
+        Closing += (_, _) => { _previewCancel?.Cancel(); _player.Dispose(); _reviewPair.Dispose(); RememberSettings(); };
     }
 
     // ---------------------------------------------------------------- busy overlay
@@ -179,7 +182,8 @@ public partial class MainWindow : Window
     /// <summary>Folders chosen last time come back, so nobody has to type them again.</summary>
     private void RestoreSettings()
     {
-        if (Directory.Exists(_settings.OutputFolder)) OutputFolder.Text = _settings.OutputFolder;
+        if (Directory.Exists(_settings.OutputFolder)) _outputFolder = _settings.OutputFolder;
+        ShowOutputFolder();
         if (Directory.Exists(_settings.TrainFolder)) TrainFolder.Text = _settings.TrainFolder;
         SuffixBox.Text = string.IsNullOrWhiteSpace(_settings.OutputSuffix) ? "-cleaned" : _settings.OutputSuffix;
         FillFormatChoices(_settings.OutputFormat);
@@ -191,13 +195,13 @@ public partial class MainWindow : Window
         else ShowLook();
         ReviewSideBySide.IsChecked = true; ReviewWipeMode.IsChecked = false;
         ReviewMode_Changed(null, new RoutedEventArgs());
-        OutputFolder.LostFocus += (_, _) => RememberSettings();
         TrainFolder.LostFocus += (_, _) => RememberSettings();
     }
 
     private void RememberSettings()
     {
-        _settings.OutputFolder = OutputFolder.Text?.Trim();
+        // The default folder next to the first clip is not remembered: it follows the clips.
+        _settings.OutputFolder = _outputFolder;
         _settings.TrainFolder = TrainFolder.Text?.Trim();
         _settings.OutputSuffix = SuffixBox.Text?.Trim() ?? "";
         _settings.OutputFormat = OutputFormat.Id;
@@ -205,7 +209,8 @@ public partial class MainWindow : Window
         _settings.OpenFolderAfterExport = OpenAfterExport.IsChecked == true;
         _settings.Snap = SnapToggle.IsChecked == true;
         _settings.LastRepair = CurrentRepair();
-        foreach (var clip in _queue) _settings.RememberCut(clip.Path, clip.Segments, clip.Bookmarks);
+        _settings.LastPreset = _basePreset is { } basis ? PresetKey(basis) : null;
+        foreach (var clip in _queue) _settings.RememberCut(clip.Path, clip.Segments, clip.Bookmarks, clip.ManualMask);
         _settings.Save();
     }
 
@@ -257,10 +262,28 @@ public partial class MainWindow : Window
         RememberSettings();
     }
 
+    /// <summary>A purpose card picks the format; the full list stays under More options.</summary>
+    private void Purpose_Changed(object? sender, RoutedEventArgs e)
+    {
+        if (_fillingFormats || sender is not RadioButton { IsChecked: true, Tag: string id }) return;
+        var index = Array.FindIndex(Formats, format => format.Id == id);
+        if (index >= 0 && FormatChoice.SelectedIndex != index) FormatChoice.SelectedIndex = index;
+    }
+
+    private RadioButton[] PurposeButtons => [PurposeShare, PurposeSmall, PurposeEdit, PurposeWeb];
+
     private void ShowFormatNote()
     {
         // ProRes stores a fixed data rate: quality and size limit have nothing to set.
         QualityValue.IsEnabled = SizeCap.IsEnabled = FormatUsesQuality;
+        _fillingFormats = true;
+        foreach (var card in PurposeButtons) card.IsChecked = card.Tag as string == OutputFormat.Id;
+        _fillingFormats = false;
+        if (PurposeButtons.All(card => card.IsChecked != true))
+        {
+            FormatNote.Text = string.Format(CultureInfo.CurrentCulture, UiText.PurposeOther, OutputFormat.Title) + " " + OutputFormat.Hint + ".";
+            return;
+        }
         FormatNote.Text = OutputFormat.Id switch
         {
             "mp4-hevc" => "About half the size of H.264 at the same quality. Older computers, TVs and some editors cannot open it.",
@@ -444,9 +467,14 @@ public partial class MainWindow : Window
             2 => "Settings apply to every clip in the queue.",
             _ => "",
         };
+        // Trim, Repair and Export fill the window exactly; their own parts scroll if they must.
+        PageScroller.VerticalScrollBarVisibility = index is >= 1 and <= 3
+            ? Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled : Avalonia.Controls.Primitives.ScrollBarVisibility.Auto;
         FitTrimPage();
         if (index == 1 && _selected != null) { LayoutStrip(); RequestFrame(); }
-        if (index == 3) UpdateExportSummary();
+        if (index == 2) { ShowPresetState(); RequestAutoRender(); }
+        else { _autoRender.Stop(); _previewCancel?.Cancel(); }
+        if (index == 3) { ShowOutputFolder(); UpdateExportSummary(); }
         PageScroller.Offset = new Vector(0, 0);
     }
     private void ImportStep_Click(object? sender, RoutedEventArgs e) => ShowPage(0);
@@ -514,6 +542,7 @@ public partial class MainWindow : Window
                         .Where(s => s.Item2 - s.Item1 >= 0.1).OrderBy(s => s.Item1).ToList();
                     if (segments.Count > 0) clip.Segments = segments;
                     clip.Bookmarks = memory.Bookmarks.Where(b => b >= 0 && b <= clip.Duration).ToList();
+                    clip.ManualMask = UserSettings.RememberedMask(memory);
                 }
                 _queue.Add(clip);
                 _ = MeasureBoxAsync(clip);
@@ -525,6 +554,7 @@ public partial class MainWindow : Window
         finally { HideBusy(); }
         if (added > 0) ImportStatus.Text = $"Added {added} clip{(added == 1 ? "" : "s")}.";
         DrawQueue();
+        ShowOutputFolder();
         if (_selected == null && _queue.Count > 0) Select(_queue[0]);
         if (_page == 0) ShowPage(0);
     }
@@ -608,6 +638,8 @@ public partial class MainWindow : Window
             clip.Box = found.Item3 < clip.Width || found.Item4 < clip.Height ? found : null;
         }
         catch { clip.Box = null; }
+        clip.BoxMeasured = true;
+        SettleSignal(clip);
     }
 
     /// <summary>A box scaled to another frame size (the cleaned file may be upscaled).</summary>
@@ -678,6 +710,9 @@ public partial class MainWindow : Window
         RequestFrame();
         if (!clip.StripRequested) _ = LoadStripAsync(clip);
         if (!clip.WaveformRequested && clip.HasAudio) _ = LoadWaveformAsync(clip);
+        ShowOsdState();
+        SettleSignal(clip);
+        RequestAutoRender();
     }
 
     // ---------------------------------------------------------------- trim editor
@@ -1141,8 +1176,6 @@ public partial class MainWindow : Window
         // Wide windows get a wider page; tall windows a taller preview, so the editor fills the screen.
         PageContent.MaxWidth = Math.Max(1180, e.NewSize.Width - 232 - 56 - 20);
         FitTrimPage();
-        if (ReviewCanvas != null) ReviewCanvas.Height = Math.Clamp(e.NewSize.Height - 600, 260, 1200);
-        FitCompareCanvas(e.NewSize.Height);
         if (_page == 1) LayoutStrip();
     }
 
@@ -1152,7 +1185,7 @@ public partial class MainWindow : Window
         if (TrimPage == null || PageScroller == null) return;
         var dark = _page == 1;
         PageScroller.Background = dark ? new SolidColorBrush(Color.Parse("#1B2025")) : Brushes.Transparent;
-        PageContent.Margin = dark ? new Thickness(0) : new Thickness(28, 22);
+        PageContent.Margin = dark ? new Thickness(0) : _page is 2 or 3 ? new Thickness(20, 14) : new Thickness(28, 22);
         PageContent.MaxWidth = dark ? double.PositiveInfinity : Math.Max(1180, Bounds.Width - 232 - 56 - 20);
         if (dark) TrimPage.Height = Math.Max(420, PageScroller.Bounds.Height);
     }
@@ -1164,6 +1197,7 @@ public partial class MainWindow : Window
     {
         if (e.Key == Key.F11) { ToggleFullScreen(); e.Handled = true; return; }
         if (e.Key == Key.Escape && ShareOverlay.IsVisible && !BusyOverlay.IsVisible) { CloseShare(); e.Handled = true; return; }
+        if (MaskOverlay.IsVisible) { if (!BusyOverlay.IsVisible && MaskKey(e)) e.Handled = true; return; }
         if (e.Key == Key.Escape && WindowState == WindowState.FullScreen) { WindowState = WindowState.Normal; e.Handled = true; return; }
         if (_page != 1 || _selected == null || FocusManager?.GetFocusedElement() is TextBox) return;
         var step = e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? 5 : 1;
@@ -1202,9 +1236,7 @@ public partial class MainWindow : Window
         if (ColourCard == null || BlockCard == null) return;
         ColourCard.IsVisible = IsAnalog;
         BlockCard.IsVisible = !IsAnalog;
-        SignalNote.Text = IsAnalog
-            ? "Analog: rainbow stripes, black-and-white dropouts and colour noise are rebuilt from neighbouring frames."
-            : "HDZero: block edges and broken macroblocks are softened or replaced from a neighbouring frame.";
+        SignalNote.Text = IsAnalog ? UiText.SignalNoteAnalog : UiText.SignalNoteHdzero;
         RefreshModelChoices();
         UpdateCleanHint();
     }
@@ -1231,6 +1263,7 @@ public partial class MainWindow : Window
         if (Effort != "balanced") parts.Add(Effort);
         if (LookOn) parts.Add("look");
         CleanHint.Text = string.Join(" · ", parts);
+        if (!_applyingPreset) RepairChanged();
     }
 
     private string Effort => EffortFast?.IsChecked == true ? "fast" : EffortBest?.IsChecked == true ? "best" : "balanced";
@@ -1240,9 +1273,9 @@ public partial class MainWindow : Window
         if (EffortNote == null) return;
         EffortNote.Text = Effort switch
         {
-            "fast" => "Quickest export. Fewer neighbouring frames and coarser motion; fine for sharing and checking a flight.",
-            "best" => "Most neighbouring frames and the finest motion. Takes the longest; for the final cut.",
-            _ => "Recommended. Nearly the quality of Best in clearly less time.",
+            "fast" => UiText.SpeedNoteFast,
+            "best" => UiText.SpeedNoteBest,
+            _ => UiText.SpeedNoteBalanced,
         };
         UpdateCleanHint();
     }
@@ -1307,14 +1340,14 @@ public partial class MainWindow : Window
 
     private void LookSlider_Changed(object? sender, RoutedEventArgs e)
     {
-        if (_settingLook || LookFringeSlider == null || LookNote == null) return;
+        if (_settingLook || LookFringeSlider == null) return;
         ShowLook();
     }
 
     /// <summary>Values, enabled state, and which preset chip matches; any other values are Custom.</summary>
     private void ShowLook()
     {
-        if (LookNote == null || LookFringeSlider == null || LookPresets == null) return;
+        if (LookFringeSlider == null || LookPresets == null) return;
         var values = LookValues;
         LookGradeValue.Text = $"{values.Grade}";
         LookGlowValue.Text = $"{values.Glow}";
@@ -1327,27 +1360,17 @@ public partial class MainWindow : Window
         foreach (var chip in LookPresets.Children.OfType<RadioButton>())
             chip.IsChecked = chosen != null && chip.Tag as string == chosen;
         LookCustom.IsVisible = LookOn && match.Id == null;
-        LookNote.Text = !LookOn ? "Off: the picture stays exactly as repaired."
-            : match.Id != null ? $"{match.Title}, applied after every repair."
-            : "Custom look, applied after every repair.";
+        ToolTip.SetTip(LookToggle, !LookOn ? UiText.LookOff
+            : match.Id != null ? string.Format(CultureInfo.CurrentCulture, UiText.LookPresetOn, match.Title)
+            : UiText.LookCustomOn);
         UpdateCleanHint();
     }
 
     private void LookAdjust_Click(object? sender, RoutedEventArgs e)
     {
         LookSliders.IsVisible = !LookSliders.IsVisible;
-        LookAdjustButton.Content = LookSliders.IsVisible ? "Hide" : "Adjust";
+        LookAdjustButton.Content = LookSliders.IsVisible ? UiText.Hide : UiText.Adjust;
         ToolTip.SetTip(LookAdjustButton, LookSliders.IsVisible ? "Fold the look sliders away" : "Show the five look sliders");
-        FitCompareCanvas(Bounds.Height);
-    }
-
-    /// <summary>The preview takes the height the page leaves; open look sliders take some of it, so nothing scrolls.</summary>
-    private void FitCompareCanvas(double windowHeight)
-    {
-        if (CompareCanvas == null || LookSliders == null) return;
-        CompareCanvas.Height = LookSliders.IsVisible
-            ? Math.Clamp(windowHeight - 590, 220, 1200)
-            : Math.Clamp(windowHeight - 480, 380, 1200);
     }
 
     // The last rendered frame: original and, with a look, the repaired frame without it.
@@ -1360,7 +1383,8 @@ public partial class MainWindow : Window
         if (CompareLeftLabel == null || LookCompare == null) return;
         var plain = LookCompare.IsChecked == true && _comparePlain != null;
         if (_compareOriginal != null) CompareBefore.Source = plain ? _comparePlain : _compareOriginal;
-        CompareLeftLabel.Text = plain ? "WITHOUT LOOK" : "ORIGINAL";
+        CompareLeftLabel.Text = plain ? "WITHOUT LOOK" : UiText.LabelOriginal;
+        CompareRightLabel.Text = UiText.LabelCleaned;
     }
 
     // ---------------------------------------------------------------- presets
@@ -1388,7 +1412,7 @@ public partial class MainWindow : Window
             DetailSlider.Value = Math.Clamp(preset.Detail, 0, 100);
             MotionSlider.Value = Math.Clamp(preset.Motion, 0, 100);
             SizeOriginal.IsChecked = preset.Size == 100; Size150.IsChecked = preset.Size == 150; Size200.IsChecked = preset.Size == 200;
-            RemoveOsd.IsChecked = preset.Osd;
+            RemoveOsd.IsChecked = preset.Osd; OsdKeep.IsChecked = !preset.Osd;
             EffortFast.IsChecked = preset.Effort == "fast"; EffortBest.IsChecked = preset.Effort == "best";
             EffortBalanced.IsChecked = preset.Effort is not ("fast" or "best");
             QualityValue.Value = Math.Clamp(preset.Quality, 14, 32);
@@ -1399,148 +1423,37 @@ public partial class MainWindow : Window
         Setting_Changed(null, new RoutedEventArgs());
     }
 
-    private void RefreshPresetChoices(string? select = null)
-    {
-        _applyingPreset = true;
-        PresetChoice.Items.Clear();
-        foreach (var preset in RepairPreset.BuiltIn)
-            PresetChoice.Items.Add(new ComboBoxItem { Content = preset.Name, Tag = preset });
-        foreach (var preset in _settings.Presets.OrderBy(preset => preset.Name))
-            PresetChoice.Items.Add(new ComboBoxItem { Content = preset.Name, Tag = preset });
-        PresetChoice.SelectedItem = PresetChoice.Items.OfType<ComboBoxItem>().FirstOrDefault(item => item.Content as string == select);
-        DeletePresetButton.IsEnabled = SelectedPreset() is { } chosen && !RepairPreset.BuiltIn.Contains(chosen);
-        _applyingPreset = false;
-    }
+    private object BuildRecipe(FootageItem clip) => RecipeOf(CurrentRepair(), clip);
 
-    private RepairPreset? SelectedPreset() => (PresetChoice.SelectedItem as ComboBoxItem)?.Tag as RepairPreset;
-
-    private void Preset_Changed(object? sender, SelectionChangedEventArgs e)
+    /// <summary>The engine recipe for these settings and this clip, with the export choices of the Export page.</summary>
+    private object RecipeOf(RepairPreset settings, FootageItem clip) => new
     {
-        if (_applyingPreset || PresetChoice == null) return;
-        if (SelectedPreset() is not { } preset) return;
-        ApplyRepair(preset);
-        DeletePresetButton.IsEnabled = !RepairPreset.BuiltIn.Contains(preset);
-        PresetStatus.IsVisible = true; PresetStatus.Text = $"Preset \"{preset.Name}\" applied.";
-    }
-
-    private void PresetName_KeyDown(object? sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter) { SavePreset_Click(sender, e); e.Handled = true; }
-    }
-
-    private void SavePreset_Click(object? sender, RoutedEventArgs e)
-    {
-        var name = PresetName.Text?.Trim() ?? "";
-        if (name.Length == 0) { PresetStatus.IsVisible = true; PresetStatus.Text = "Give the preset a name first."; return; }
-        if (RepairPreset.BuiltIn.Any(preset => preset.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
-        { PresetStatus.IsVisible = true; PresetStatus.Text = "That name belongs to a built-in preset. Choose another one."; return; }
-        var saved = CurrentRepair();
-        saved.Name = name;
-        _settings.Presets.RemoveAll(preset => preset.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
-        _settings.Presets.Add(saved);
-        _settings.Save();
-        RefreshPresetChoices(name);
-        PresetName.Text = "";
-        PresetStatus.IsVisible = true; PresetStatus.Text = $"Preset \"{name}\" saved.";
-    }
-
-    private void DeletePreset_Click(object? sender, RoutedEventArgs e)
-    {
-        if (SelectedPreset() is not { } preset || RepairPreset.BuiltIn.Contains(preset)) return;
-        _settings.Presets.Remove(preset);
-        _settings.Save();
-        RefreshPresetChoices();
-        PresetStatus.IsVisible = true; PresetStatus.Text = $"Preset \"{preset.Name}\" deleted.";
-    }
-
-    private object BuildRecipe(FootageItem clip) => new
-    {
-        signalart = IsAnalog ? "analog" : "digital",
-        farbberuhigung = (int)ColorSlider.Value,
-        blockpflege = (int)BlockSlider.Value,
-        kantendetail = (int)DetailSlider.Value,
-        vergroesserung_prozent = SizePercent,
-        bewegungsspur = (int)MotionSlider.Value,
+        signalart = settings.Signal == "digital" ? "digital" : "analog",
+        farbberuhigung = Math.Clamp(settings.Colour, 0, 100),
+        blockpflege = Math.Clamp(settings.Block, 0, 100),
+        kantendetail = Math.Clamp(settings.Detail, 0, 100),
+        vergroesserung_prozent = settings.Size is 150 or 200 ? settings.Size : 100,
+        bewegungsspur = Math.Clamp(settings.Motion, 0, 100),
         schnittbeginn = clip.In,
         schnittende = clip.Out,
         untertiteltext = CaptionText.Text ?? "",
         kompressionswert = (int)(QualityValue.Value ?? 18),
         dateiziel_mb = FormatUsesQuality ? (int)(SizeCap.Value ?? 0) : 0,
-        osd_entfernen = RemoveOsd.IsChecked == true,
-        rauschminderung = (int)NoiseSlider.Value,
-        aufwand = Effort,
+        osd_entfernen = settings.Osd,
+        rauschminderung = Math.Clamp(settings.Noise, 0, 100),
+        aufwand = settings.Effort is "fast" or "best" ? settings.Effort : "balanced",
         dateiformat = OutputFormat.Id,
-        look = LookOn,
-        look_farbstimmung = LookValue(LookGradeSlider) / 100.0,
-        look_leuchten = LookValue(LookGlowSlider) / 100.0,
-        look_farbsaum = LookValue(LookFringeSlider) / 100.0,
-        look_vignette = LookValue(LookVignetteSlider) / 100.0,
-        look_koernung = LookValue(LookGrainSlider) / 100.0,
+        look = settings.Look,
+        look_farbstimmung = Math.Clamp(settings.LookGrade, 0, 100) / 100.0,
+        look_leuchten = Math.Clamp(settings.LookGlow, 0, 100) / 100.0,
+        look_farbsaum = Math.Clamp(settings.LookFringe, 0, 100) / 100.0,
+        look_vignette = Math.Clamp(settings.LookVignette, 0, 100) / 100.0,
+        look_koernung = Math.Clamp(settings.LookGrain, 0, 100) / 100.0,
+        // Hand corrections of the OSD mask, made in the mask editor for this recording.
+        osd_handmaske = clip.ManualMask is { } mask && File.Exists(mask) ? mask : "",
     };
 
     private string Mode => ModeChoice.SelectedIndex == 1 ? "model" : "manual";
-
-    private async void Preview_Click(object? sender, RoutedEventArgs e)
-    {
-        if (_selected == null) { PreviewStatus.Text = "Add and select a clip first."; return; }
-        if (Mode == "model" && !File.Exists(ModelPath.Text)) { PreviewStatus.Text = "Choose a trained model or switch the engine to Standard."; return; }
-        var clip = _selected;
-        var moment = Timeline.SegmentAt(_head) >= 0 ? Math.Clamp(_head, clip.In, Math.Max(clip.In, clip.Out - 0.3))
-            : Math.Clamp(clip.Segments[Math.Max(0, Timeline.NearestSegment(_head))].In, clip.In, Math.Max(clip.In, clip.Out - 0.3));
-        var before = TempFile("before");
-        var after = TempFile("after");
-        var plain = TempFile("plain");
-        PreviewButton.IsEnabled = false;
-        PreviewTitle.Text = $"{clip} at {Clock(moment)}";
-        PreviewStatus.Text = "Rendering the frame through every selected step…";
-        ShowBusy("Rendering the frame", $"{clip} at {Clock(moment)}, through every selected repair step.");
-        try
-        {
-            var outcome = await EngineAsync(new { action = "preview", source = clip.Path, seconds = moment, before, after,
-                plain = LookOn ? plain : null, recipe = BuildRecipe(clip), mode = Mode, model = ModelPath.Text });
-            var original = LoadBitmap(before);
-            var cleaned = LoadBitmap(after);
-            _compareOriginal = Cropped(original, clip.Box, clip.Width);
-            // With a look the engine also sends the repaired frame without it, for the second comparison.
-            _comparePlain = outcome.ValueKind == JsonValueKind.Object && outcome.TryGetProperty("plain", out _) && File.Exists(plain)
-                ? Cropped(LoadBitmap(plain), clip.Box, clip.Width) : null;
-            LookCompare.IsVisible = _comparePlain != null;
-            CompareBefore.Source = _compareOriginal;
-            ShowCompareLeft();
-            CompareAfter.Source = Cropped(cleaned, clip.Box, clip.Width);
-            _compareAspect = clip.Box is { } cb ? (double)cb.Width / cb.Height : (double)clip.Width / clip.Height;
-            CompareHint.IsVisible = false;
-            CompareDivider.IsVisible = true;
-            PreviewStatus.Text = "Drag the orange line in the picture to compare original and result.";
-            UpdateCompare();
-        }
-        catch (Exception ex) { PreviewStatus.Text = $"Preview failed: {ex.Message}"; }
-        finally { File.Delete(before); File.Delete(after); File.Delete(plain); PreviewButton.IsEnabled = true; HideBusy(); }
-    }
-
-    private async void DetectOsd_Click(object? sender, RoutedEventArgs e)
-    {
-        if (_selected == null) { OsdStatus.Text = "Add and select a clip first."; return; }
-        var clip = _selected;
-        var target = TempFile("osd");
-        DetectOsdButton.IsEnabled = false;
-        OsdStatus.Text = $"Looking for overlays in {clip}…";
-        ShowBusy("Looking for the OSD", $"Scanning {clip} for text, icons and bars that hold still.");
-        try
-        {
-            var outcome = await EngineAsync(new { action = "osd", source = clip.Path, start = clip.In, end = clip.Out,
-                seconds = Math.Clamp(_head, clip.In, clip.Out), target });
-            var marked = LoadBitmap(target);
-            _compareOriginal = _comparePlain = null; LookCompare.IsVisible = false; ShowCompareLeft();
-            CompareBefore.Source = marked; CompareAfter.Source = marked; CompareHint.IsVisible = false;
-            PreviewTitle.Text = "Overlays marked in orange";
-            OsdStatus.Text = outcome.GetProperty("found").GetBoolean()
-                ? $"Found overlays on {outcome.GetProperty("coverage").GetDouble():0.0}% of the picture. Tick the box to remove them."
-                : "No overlays found in this cut.";
-        }
-        catch (Exception ex) { OsdStatus.Text = $"OSD search failed: {ex.Message}"; }
-        finally { File.Delete(target); DetectOsdButton.IsEnabled = true; HideBusy(); }
-    }
 
     private void Compare_Changed(object? sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e) => UpdateCompare();
 
@@ -1693,24 +1606,52 @@ public partial class MainWindow : Window
 
     // ---------------------------------------------------------------- export
 
+    // The folder the user chose; null means the default "Cleaned" folder next to the first clip.
+    private string? _outputFolder;
+
+    /// <summary>A "Cleaned" folder next to the first clip in the queue, made when the export starts.</summary>
+    private string? DefaultOutputFolder()
+    {
+        var first = _queue.FirstOrDefault()?.Path;
+        var folder = first == null ? null : System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(first));
+        return folder == null ? null : System.IO.Path.Combine(folder, "Cleaned");
+    }
+
+    /// <summary>Where the files go: the chosen folder, else the default next to the first clip.</summary>
+    private string? OutputFolderPath => !string.IsNullOrWhiteSpace(_outputFolder) ? _outputFolder : DefaultOutputFolder();
+
+    private void ShowOutputFolder()
+    {
+        if (OutputFolderChip == null) return;
+        var folder = OutputFolderPath;
+        OutputFolderChip.Text = folder ?? UiText.FolderNone;
+        ToolTip.SetTip(OutputFolderChip, folder);
+        OutputFolderNote.Text = folder != null && !Directory.Exists(folder) ? UiText.FolderCreatedOnExport : "";
+    }
+
     private async void OutputFolder_Click(object? sender, RoutedEventArgs e)
     {
-        if (await PickFolderAsync(OutputFolder.Text) is { } folder) { OutputFolder.Text = folder; RememberSettings(); }
+        var start = OutputFolderPath;
+        if (start != null && !Directory.Exists(start)) start = System.IO.Path.GetDirectoryName(start);
+        if (await PickFolderAsync(start) is { } folder) { _outputFolder = folder; ShowOutputFolder(); RememberSettings(); }
     }
 
     private void OpenOutput_Click(object? sender, RoutedEventArgs e)
     {
-        if (!Directory.Exists(OutputFolder.Text)) return;
-        try { OpenInFileManager(OutputFolder.Text!); }
+        var folder = OutputFolderPath;
+        if (!Directory.Exists(folder)) return;
+        try { OpenInFileManager(folder); }
         catch (Exception ex) { ExportStatus.Text = $"Could not open the folder: {ex.Message}"; }
     }
 
     private void UpdateExportSummary()
     {
-        var total = _queue.Sum(clip => clip.Out - clip.In);
+        var total = _queue.Sum(clip => clip.Kept);
         if (_exportCancel == null) ExportStatus.Text = _queue.Count == 0 ? "Add clips in Import first." : "Ready to export.";
-        ExportSummary.Text = _queue.Count == 0 ? "The queue is empty."
-            : $"{_queue.Count} clip(s), {Clock(total)} of video · {CleanHint.Text}. Frame-by-frame cleaning takes several seconds per second of video.";
+        ExportButton.Content = _queue.Count > 1 ? string.Format(CultureInfo.CurrentCulture, UiText.ExportMany, _queue.Count) : UiText.ExportOne;
+        ExportSummary.Text = _queue.Count == 0 ? UiText.ExportSummaryEmpty
+            : string.Format(CultureInfo.CurrentCulture, UiText.ExportSummary, _queue.Count, Clock(total), CleanHint.Text);
+        ExportFoldedText.Text = string.Format(CultureInfo.CurrentCulture, UiText.ExportFoldedSummary, OutputFolderPath, OutputFormat.Title);
     }
 
     private async void Export_Clicked(object? sender, RoutedEventArgs e) => await ExportAsync(_queue.ToList(), SuffixBox.Text?.Trim() ?? "");
@@ -1730,15 +1671,30 @@ public partial class MainWindow : Window
         await ExportAsync([_reviewClip], (SuffixBox.Text?.Trim() ?? "") + "-refined");
     }
 
+    /// <summary>Progress shows right under the Export button; the settings are locked while it runs.</summary>
+    private void ShowExportRunning(bool running)
+    {
+        ExportRunning.IsVisible = running;
+        ExportButton.IsEnabled = !running;
+        ExportDetails.IsEnabled = !running;
+        ExportFoldButton.IsEnabled = !running;
+        CancelExportButton.IsEnabled = running;
+        AutoRefineButton.IsEnabled = !running;
+        ShareButton.IsEnabled = !running;
+    }
+
     private async Task ExportAsync(List<FootageItem> clips, string suffix)
     {
         if (_exportCancel != null) return;
         if (clips.Count == 0) { ExportStatus.Text = "Add clips in Import first."; return; }
-        if (string.IsNullOrWhiteSpace(OutputFolder.Text) || !Directory.Exists(OutputFolder.Text)) { ExportStatus.Text = "Choose a destination folder."; return; }
+        var folder = OutputFolderPath;
+        if (string.IsNullOrWhiteSpace(folder)) { ExportStatus.Text = "Choose a destination folder."; return; }
         if (Mode == "model" && !File.Exists(ModelPath.Text)) { ExportStatus.Text = "Choose a trained model under Repair → Advanced."; return; }
-        var folder = OutputFolder.Text!;
-        RememberSettings();
         if (suffix.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0) { ExportStatus.Text = "The file name suffix contains characters that are not allowed."; return; }
+        try { Directory.CreateDirectory(folder); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { ExportStatus.Text = $"Could not create the folder: {ex.Message}"; return; }
+        ShowOutputFolder();
+        RememberSettings();
         var join = JoinClips.IsChecked == true && clips.Count > 1;
         var usedTargets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var targets = new List<string>();
@@ -1757,14 +1713,18 @@ public partial class MainWindow : Window
             { ExportStatus.Text = "Source and output must differ."; return; }
             targets.Add(target);
         }
+        // The settings are fixed when the export starts: the pages stay usable while it runs.
+        var recipes = clips.Select(BuildRecipe).ToList();
+        var mode = Mode;
+        var model = ModelPath.Text;
+        var quality = (int)(QualityValue.Value ?? 18);
+        var signal = IsAnalog ? "analog" : "digital";
         // Remaining time is weighted by cut length, so long clips count for more.
         var total = Math.Max(0.001, clips.Sum(clip => clip.Kept));
         _exportCancel = new CancellationTokenSource();
         _exportStarted = DateTime.UtcNow; _exportDone = 0;
-        ExportButton.IsEnabled = false; CancelExportButton.IsEnabled = true; FormatChoice.IsEnabled = false;
-        ExportProgress.Value = 0; ExportTime.Text = "Estimating remaining time…";
-        ShowBusy(clips.Count == 1 ? "Exporting the clip" : $"Exporting {clips.Count} clips", "Starting…", () => CancelExport_Click(null, new RoutedEventArgs()));
-        UpdateBusy(0);
+        ExportProgress.Value = 0; ExportTime.Text = UiText.Estimating; ExportRunText.Text = UiText.ExportStarting;
+        ShowExportRunning(true);
         _exportClock.Start();
         var finished = 0.0;
         try
@@ -1773,19 +1733,19 @@ public partial class MainWindow : Window
             {
                 var clip = clips[i];
                 var target = targets[i];
-                ExportStatus.Text = $"Rendering {i + 1} of {clips.Count}: {clip}";
+                ExportStatus.Text = "";
+                ExportRunText.Text = clips.Count == 1 ? $"Rendering {clip}" : $"Rendering {i + 1} of {clips.Count}: {clip}";
                 ExportHint.Text = $"Rendering {i + 1}/{clips.Count}";
-                UpdateBusy(null, ExportStatus.Text);
                 var before = finished;
                 var share = clip.Kept / total;
                 try
                 {
-                    await EngineAsync(new { action = "export", source = clip.Path, target, recipe = BuildRecipe(clip), mode = Mode, model = ModelPath.Text,
+                    await EngineAsync(new { action = "export", source = clip.Path, target, recipe = recipes[i], mode, model,
                             segments = clip.Segments.Select(part => new[] { part.In, part.Out }).ToList() },
                         item =>
                         {
                             var done = before + share * item.GetProperty("fraction").GetDouble();
-                            Dispatcher.UIThread.Post(() => { _exportDone = done; ExportProgress.Value = 100 * done; UpdateBusy(done); });
+                            Dispatcher.UIThread.Post(() => { _exportDone = done; ExportProgress.Value = 100 * done; });
                         }, _exportCancel.Token);
                 }
                 catch (OperationCanceledException)
@@ -1812,12 +1772,11 @@ public partial class MainWindow : Window
                 ReviewPanel.IsVisible = true;
                 Dispatcher.UIThread.Post(() => { _reviewSeeking = true; ReviewSeek.Value = 0; _reviewSeeking = false; });
                 await RefreshReviewAsync();
-                _ = AssessAsync(clip, target);
+                _ = AssessAsync(clip, target, quality, signal);
             }
             if (join)
             {
-                ExportStatus.Text = "Joining the clips into one video…";
-                UpdateBusy(null, ExportStatus.Text);
+                ExportRunText.Text = "Joining the clips into one video…";
                 try
                 {
                     await EngineAsync(new { action = "merge", sources = targets, target = joined }, null, _exportCancel.Token);
@@ -1850,22 +1809,25 @@ public partial class MainWindow : Window
         {
             _exportClock.Stop(); ExportTime.Text = "";
             _exportCancel.Dispose(); _exportCancel = null;
-            ExportButton.IsEnabled = true; CancelExportButton.IsEnabled = false; FormatChoice.IsEnabled = true;
-            HideBusy();
+            ShowExportRunning(false);
+            ShowOutputFolder();
         }
     }
 
-    /// <summary>Exports take minutes: bring the window back and open the folder if wanted.</summary>
+    /// <summary>After an export the settings fold into one line, so the result view gets the room.</summary>
     private void ExportFold_Click(object? sender, RoutedEventArgs e) => FoldExportSettings(ExportDetails.IsVisible);
 
     private void FoldExportSettings(bool fold)
     {
+        UpdateExportSummary();
         ExportDetails.IsVisible = !fold;
         ExportActions.IsVisible = !fold;
-        ExportFoldButton.IsVisible = true;
-        ExportFoldButton.Content = fold ? "Show settings" : "Hide settings";
+        ExportFolded.IsVisible = ReviewPanel.IsVisible;
+        ExportFoldButton.Content = fold ? UiText.ShowSettings : UiText.HideSettings;
+        ExportFoldedText.IsVisible = fold;
     }
 
+    /// <summary>Exports take minutes: bring the window back and open the folder if wanted.</summary>
     private void FinishExport(string folder)
     {
         if (ReviewPanel.IsVisible) FoldExportSettings(true);
@@ -1880,7 +1842,7 @@ public partial class MainWindow : Window
     {
         if (_exportCancel == null) return;
         CancelExportButton.IsEnabled = false;
-        ExportStatus.Text = "Canceling…";
+        ExportRunText.Text = "Canceling…";
         _exportCancel.Cancel();
     }
 
@@ -1890,10 +1852,9 @@ public partial class MainWindow : Window
         // The first seconds go to OSD search and decoder start-up; wait for real
         // progress before projecting a finishing time.
         if (_exportDone < 0.005 || elapsed.TotalSeconds < 3)
-        { ExportTime.Text = $"Elapsed {Duration(elapsed)} · estimating remaining time…"; UpdateBusy(null, null, $"elapsed {Duration(elapsed)}"); return; }
+        { ExportTime.Text = $"Elapsed {Duration(elapsed)} · estimating remaining time…"; return; }
         var remaining = TimeSpan.FromSeconds(elapsed.TotalSeconds * (1 - _exportDone) / _exportDone);
         ExportTime.Text = $"{100 * _exportDone:0}% · about {Duration(remaining)} left · elapsed {Duration(elapsed)}";
-        UpdateBusy(null, null, $"about {Duration(remaining)} left");
     }
 
     private static void RemovePartialOutput(string target)
@@ -2024,7 +1985,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Measures artefacts in original and result: what was gained, what is left, what a re-encode costs.</summary>
-    private async Task AssessAsync(FootageItem clip, string target)
+    private async Task AssessAsync(FootageItem clip, string target, int quality, string signal)
     {
         _assessedHeadroom = -1;
         GainLabel.Text = HeadroomLabel.Text = LossLabel.Text = "…";
@@ -2033,7 +1994,7 @@ public partial class MainWindow : Window
         {
             var report = await EngineAsync(new { action = "assess", source = clip.Path, target,
                 segments = clip.Segments.Select(part => new[] { part.In, part.Out }).ToList(),
-                quality = (int)(QualityValue.Value ?? 18), signal = IsAnalog ? "analog" : "digital" });
+                quality, signal });
             if (_reviewOutput != target) return;
             _assessedGain = report.GetProperty("gain_percent").GetDouble();
             _assessedHeadroom = report.GetProperty("headroom_percent").GetDouble();

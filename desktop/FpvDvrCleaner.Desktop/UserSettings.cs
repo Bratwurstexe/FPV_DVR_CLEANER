@@ -26,16 +26,66 @@ public sealed class RepairPreset
     [JsonPropertyName("lookGrain")] public int LookGrain { get; set; }
     [JsonPropertyName("lookFringe")] public int LookFringe { get; set; }
 
+    // Built-in levels only: a stable id, the level (light, normal, strong) and the plain line shown for it.
+    [JsonIgnore] public string Id { get; init; } = "";
+    [JsonIgnore] public string Level { get; init; } = "";
+    [JsonIgnore] public string Description { get; init; } = "";
+    [JsonIgnore] public bool IsBuiltIn => Id.Length > 0;
+    /// <summary>"Analog · Normal" for a built-in level, the name the user gave otherwise.</summary>
+    [JsonIgnore] public string FullName => IsBuiltIn ? $"{UiText.SignalName(Signal)} · {Name}" : Name;
+
     public RepairPreset Clone() => (RepairPreset)MemberwiseClone();
 
-    /// <summary>Presets that ship with the app; they cannot be deleted.</summary>
+    /// <summary>
+    /// The settings with this preset applied. A built-in level sets the repairs only
+    /// and leaves size, speed, the OSD choice, the look and the export settings as they
+    /// are; a user preset brings back everything it was saved with.
+    /// </summary>
+    public RepairPreset AppliedTo(RepairPreset current)
+    {
+        var next = Clone();
+        next.Name = "";
+        if (!IsBuiltIn) return next;
+        next = current.Clone();
+        next.Name = "";
+        next.Signal = Signal; next.Colour = Colour; next.Noise = Noise; next.Block = Block;
+        next.Detail = Detail; next.Motion = Motion;
+        return next;
+    }
+
+    /// <summary>Whether the repairs are what this preset gives; a user preset must match size, speed, OSD and look too.</summary>
+    public bool Matches(RepairPreset current)
+    {
+        var target = AppliedTo(current);
+        return target.Signal == current.Signal && target.Noise == current.Noise && target.Detail == current.Detail
+               && target.Motion == current.Motion && target.Size == current.Size && target.Effort == current.Effort
+               && (current.Signal == "digital" || target.Colour == current.Colour)
+               && (current.Signal != "digital" || target.Block == current.Block)
+               && target.Osd == current.Osd && target.Look == current.Look
+               && (!current.Look || (target.LookGrade, target.LookGlow, target.LookVignette, target.LookGrain, target.LookFringe)
+                   == (current.LookGrade, current.LookGlow, current.LookVignette, current.LookGrain, current.LookFringe));
+    }
+
+    /// <summary>
+    /// The answers to "How bad is it?" per signal, light to strong; they cannot be renamed
+    /// or deleted. Values follow the engine: colour repair and block repair 0..100 (analog
+    /// colour rebuild, HDZero breakup rebuild), noise reduction is the weight of the
+    /// five-frame fusion, detail its clipped edge lift. Normal is the former standard preset.
+    /// </summary>
     public static IReadOnlyList<RepairPreset> BuiltIn { get; } =
     [
-        new() { Name = "Analog standard" },
-        new() { Name = "Analog, clean and upscale to 1080p", Size = 150, Osd = true, Effort = "best" },
-        new() { Name = "HDZero standard", Signal = "digital" },
-        new() { Name = "Quick look (fast)", Noise = 0, Detail = 0, Effort = "fast", Quality = 22 },
+        new() { Id = "analog-light", Level = "light", Name = UiText.LevelLight, Description = UiText.LevelAnalogLight, Colour = 35, Noise = 25, Detail = 15 },
+        new() { Id = "analog-normal", Level = "normal", Name = UiText.LevelNormal, Description = UiText.LevelAnalogNormal },
+        new() { Id = "analog-strong", Level = "strong", Name = UiText.LevelStrong, Description = UiText.LevelAnalogStrong, Colour = 90, Noise = 80, Detail = 10 },
+        new() { Id = "hdzero-light", Level = "light", Signal = "digital", Name = UiText.LevelLight, Description = UiText.LevelHdzeroLight, Block = 20, Noise = 0, Detail = 15 },
+        new() { Id = "hdzero-normal", Level = "normal", Signal = "digital", Name = UiText.LevelNormal, Description = UiText.LevelHdzeroNormal },
+        new() { Id = "hdzero-strong", Level = "strong", Signal = "digital", Name = UiText.LevelStrong, Description = UiText.LevelHdzeroStrong, Block = 70, Noise = 75, Detail = 10 },
     ];
+
+    /// <summary>The built-in level for a signal ("analog" or "digital") and a level name.</summary>
+    public static RepairPreset LevelFor(string signal, string level) =>
+        BuiltIn.FirstOrDefault(preset => preset.Signal == signal && preset.Level == level)
+        ?? BuiltIn.First(preset => preset.Signal == signal && preset.Level == "normal");
 }
 
 /// <summary>The cut of one recording, so it comes back when the file is added again.</summary>
@@ -46,6 +96,8 @@ public sealed class ClipMemory
     [JsonPropertyName("segments")] public List<double[]> Segments { get; set; } = [];
     [JsonPropertyName("bookmarks")] public List<double> Bookmarks { get; set; } = [];
     [JsonPropertyName("seen")] public long Seen { get; set; }
+    // File name (in the osd-masks folder) of the hand corrections of the OSD mask; null without.
+    [JsonPropertyName("osdMask")] public string? OsdMask { get; set; }
 }
 
 /// <summary>How the last share video was made: format, layout per format, length and the extras.</summary>
@@ -76,7 +128,10 @@ public sealed class UserSettings
     [JsonPropertyName("joinClips")] public bool JoinClips { get; set; }
     [JsonPropertyName("snap")] public bool Snap { get; set; } = true;
     [JsonPropertyName("lastRepair")] public RepairPreset? LastRepair { get; set; }
+    // The user's own presets; presets saved by 0.6.0 and earlier load here as they were.
     [JsonPropertyName("presets")] public List<RepairPreset> Presets { get; set; } = [];
+    // The preset the current settings started from: a built-in level id or "user:" plus the name.
+    [JsonPropertyName("lastPreset")] public string? LastPreset { get; set; }
     [JsonPropertyName("clips")] public Dictionary<string, ClipMemory> Clips { get; set; } = new();
     // The last share video choices; settings files from before Share load with these defaults.
     [JsonPropertyName("share")] public ShareChoices Share { get; set; } = new();
@@ -86,7 +141,10 @@ public sealed class UserSettings
 
     public static string Folder()
     {
-        var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FPV DVR Cleaner");
+        // FPV_DVR_CLEANER_HOME points the settings and models somewhere else, e.g. a portable folder or a test profile.
+        var custom = Environment.GetEnvironmentVariable("FPV_DVR_CLEANER_HOME");
+        var folder = !string.IsNullOrWhiteSpace(custom) ? custom
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FPV DVR Cleaner");
         Directory.CreateDirectory(folder);
         return folder;
     }
@@ -144,7 +202,26 @@ public sealed class UserSettings
         return memory;
     }
 
-    public void RememberCut(string path, IEnumerable<(double In, double Out)> segments, IEnumerable<double> bookmarks)
+    /// <summary>Folder of the hand-corrected OSD masks, one PNG per recording.</summary>
+    public static string MaskFolder()
+    {
+        var folder = Path.Combine(Folder(), "osd-masks");
+        Directory.CreateDirectory(folder);
+        return folder;
+    }
+
+    /// <summary>Where the OSD mask corrections of a recording are kept.</summary>
+    public static string MaskPath(string path)
+    {
+        var hash = Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(ClipKey(path))))[..16];
+        return Path.Combine(MaskFolder(), $"{hash.ToLowerInvariant()}.png");
+    }
+
+    /// <summary>The OSD mask corrections remembered for a recording, if the file is still there.</summary>
+    public static string? RememberedMask(ClipMemory memory) =>
+        memory.OsdMask is { Length: > 0 } name && File.Exists(Path.Combine(MaskFolder(), name)) ? Path.Combine(MaskFolder(), name) : null;
+
+    public void RememberCut(string path, IEnumerable<(double In, double Out)> segments, IEnumerable<double> bookmarks, string? osdMask = null)
     {
         try
         {
@@ -154,6 +231,7 @@ public sealed class UserSettings
                 Size = info.Length, Modified = info.LastWriteTimeUtc.Ticks, Seen = DateTime.UtcNow.Ticks,
                 Segments = segments.Select(s => new[] { s.In, s.Out }).ToList(),
                 Bookmarks = bookmarks.ToList(),
+                OsdMask = osdMask is { } mask && File.Exists(mask) ? Path.GetFileName(mask) : null,
             };
         }
         catch (IOException) { /* The file went away; nothing to remember. */ }

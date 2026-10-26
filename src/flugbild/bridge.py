@@ -19,14 +19,29 @@ from .neural import NeuralProfile, train_network
 from .osd import detect_osd, preview
 from .processor import process_one
 from .recipe import DATEIFORMATE, Arbeitsrezept
-from .restoration import clip_mask, picture_box, preview_frames, process_temporal
+from . import handmask
+from .restoration import PreviewWindow, clip_mask, picture_box, process_temporal
 from .segments import audio_outline, concat_files, export_segments, normalize_segments
 from .share import Teilauftrag, make_share
 from .assess import assess, sample_frames
 
 
-def cached_mask(source: Path, recipe: Arbeitsrezept, info) -> tuple[np.ndarray, np.ndarray] | None:
-    """OSD mask and guide of a cut, kept in the temp folder so repeated previews stay quick."""
+def cached_mask(source: Path, recipe: Arbeitsrezept, info) -> tuple[np.ndarray, ...] | None:
+    """OSD mask and guide of a cut, with the hand corrections of the mask editor merged in.
+
+    The automatic search is kept in the temp folder so repeated previews stay
+    quick. Its key is the file and the cut only; the corrections are merged after
+    loading, so a changed correction file can never meet a stale cached result.
+    """
+    layers = handmask.read(recipe.osd_handmaske, (info.height, info.width))
+    found = _cached_search(source, recipe, info)
+    if found is None and (layers is None or not layers[0].any()):
+        return None
+    return handmask.merge(found, layers, (info.height, info.width))
+
+
+def _cached_search(source: Path, recipe: Arbeitsrezept, info) -> tuple[np.ndarray, np.ndarray] | None:
+    """The automatic OSD search of a cut, from the temp folder when it was done before."""
     stamp = f"{source.resolve()}|{source.stat().st_mtime_ns}|{recipe.schnittbeginn}|{recipe.schnittende}"
     name = f"flugbild-osd-{hashlib.sha1(stamp.encode()).hexdigest()[:16]}"
     store = Path(tempfile.gettempdir()) / f"{name}.png"
@@ -62,6 +77,46 @@ def render_cut(source: Path, target: Path, recipe: Arbeitsrezept, info, mode: st
     return process_one(source, target, recipe, info, report, threading.Event())
 
 
+def _matching(profile, recipe: Arbeitsrezept):
+    """The trained model, if it was made for the signal of this recipe."""
+    return profile if profile is not None and profile.signalart == recipe.signalart else None
+
+
+def preview_action(settings: dict) -> None:
+    """One frame through the whole chain.
+
+    * ``before`` and ``after``: the original and the result (``plain``: the
+      result without the look, if one is on).
+    * ``reference_recipe``: ``before`` is rendered with that recipe instead of
+      being the original, to show what one setting changes on its own.
+    """
+    source = Path(settings["source"])
+    info = inspect_video(source)
+    profile = (NeuralProfile.load(Path(settings["model"]))
+               if settings.get("mode") == "model" else None)
+    seconds = float(settings["seconds"])
+    recipe = Arbeitsrezept(**settings["recipe"])
+    osd = cached_mask(source, recipe, info) if (recipe.osd_entfernen or recipe.signalart == "analog") else None
+    window = PreviewWindow.decode(source, seconds, recipe, info, osd)
+    plain, finished = window.render(recipe, profile)
+    if settings.get("reference_recipe"):
+        reference = Arbeitsrezept(**settings["reference_recipe"])
+        # The reference may switch a repair off; it still shares the decoded frames and the mask.
+        _, other = window.render(reference, _matching(profile, reference))
+        before = window.placed(other, reference)
+    else:
+        before = window.frames[window.middle]
+    if settings.get("before"):
+        cv2.imwrite(settings["before"], before)
+    cv2.imwrite(settings["after"], window.placed(finished, recipe))
+    # With a look, the repaired frame without it can be written too, to compare the two.
+    if settings.get("plain") and look_active(recipe):
+        cv2.imwrite(settings["plain"], window.placed(plain, recipe))
+        emit("result", before=settings.get("before"), after=settings["after"], plain=settings["plain"])
+    else:
+        emit("result", before=settings.get("before"), after=settings["after"])
+
+
 def emit(kind: str, **fields: object) -> None:
     print(json.dumps({"kind": kind, **fields}, ensure_ascii=True), flush=True)
 
@@ -91,18 +146,25 @@ def run(settings: dict) -> None:
         info = inspect_video(source)
         start = float(settings.get("start", 0))
         end = float(settings.get("end") or info.duration)
-        overlay = cached_mask(source, Arbeitsrezept(schnittbeginn=start, schnittende=end
-                                                     if end < info.duration else 0.0), info)
-        if overlay is None:
+        cut = Arbeitsrezept(schnittbeginn=start, schnittende=end if end < info.duration else 0.0,
+                            osd_handmaske=settings.get("manual_mask") or "")
+        found = _cached_search(source, cut, info)
+        if found is None:
             raise ValueError("The cut is too short to find the OSD")
-        mask = overlay[0]
+        # Optional, for the mask editor: the automatic mask alone (0/255, full
+        # frame) and the frame without marks.
+        if settings.get("mask_target"):
+            cv2.imwrite(str(settings["mask_target"]), found[0])
+        mask = cached_mask(source, cut, info)[0]
         still_frame(source, float(settings.get("seconds", start)), target)
         frame = cv2.imread(str(target))
         if frame is None or frame.shape[:2] != mask.shape:
             raise ValueError("Could not read the preview frame")
+        if settings.get("frame_target"):
+            cv2.imwrite(str(settings["frame_target"]), frame)
         cv2.imwrite(str(target), preview(frame, mask))
         emit("result", target=str(target), coverage=float((mask > 0).mean() * 100),
-             found=bool(np.any(mask)))
+             found=bool(np.any(mask)), automatic=float((found[0] > 0).mean() * 100))
     elif action == "filmstrip":
         source, folder = Path(settings["source"]), Path(settings["folder"])
         folder.mkdir(parents=True, exist_ok=True)
@@ -120,21 +182,7 @@ def run(settings: dict) -> None:
              tiles=[{"seconds": round(index * interval, 3), "path": str(path)}
                     for index, path in enumerate(pictures)])
     elif action == "preview":
-        source = Path(settings["source"])
-        recipe = Arbeitsrezept(**settings["recipe"])
-        info = inspect_video(source)
-        profile = (NeuralProfile.load(Path(settings["model"]))
-                   if settings.get("mode") == "model" else None)
-        osd = cached_mask(source, recipe, info) if (recipe.osd_entfernen or recipe.signalart == "analog") else None
-        before, plain, after = preview_frames(source, float(settings["seconds"]), recipe, info, profile, osd)
-        cv2.imwrite(settings["before"], before)
-        cv2.imwrite(settings["after"], after)
-        # With a look, the repaired frame without it can be written too, to compare the two.
-        if settings.get("plain") and look_active(recipe):
-            cv2.imwrite(settings["plain"], plain)
-            emit("result", before=settings["before"], after=settings["after"], plain=settings["plain"])
-        else:
-            emit("result", before=settings["before"], after=settings["after"])
+        preview_action(settings)
     elif action == "train":
         previous = (NeuralProfile.load(Path(settings["initial_model"]))
                     if settings.get("initial_model") else None)

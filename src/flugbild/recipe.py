@@ -12,7 +12,7 @@ DATEIFORMATE = {"mp4-h264": ".mp4", "mp4-hevc": ".mp4", "mov-prores": ".mov",
 # vignette and film grain. See look.py.
 LOOK_WERTE = ("look_farbstimmung", "look_leuchten", "look_farbsaum", "look_vignette", "look_koernung")
 # Fields that recipes saved by older versions lack; they load with their defaults.
-SPAETERE_FELDER = {"aufwand", "dateiformat", "look", *LOOK_WERTE}
+SPAETERE_FELDER = {"aufwand", "dateiformat", "look", *LOOK_WERTE, "osd_handmaske"}
 
 
 @dataclass(frozen=True)
@@ -40,6 +40,8 @@ class Arbeitsrezept:
     look_farbsaum: float = 0.0
     look_vignette: float = 0.0
     look_koernung: float = 0.0
+    # Hand corrections of the OSD mask from the mask editor: a PNG path, "" for none. See handmask.py.
+    osd_handmaske: str = ""
 
     def validate(self) -> None:
         if self.signalart not in {"analog", "digital", "neutral"}:
@@ -67,6 +69,8 @@ class Arbeitsrezept:
             raise ValueError("Unknown file format")
         if not isinstance(self.look, bool):
             raise ValueError("The look must be on or off")
+        if not isinstance(self.osd_handmaske, str):
+            raise ValueError("The OSD mask correction must be a file path")
         for name in LOOK_WERTE:
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 1:

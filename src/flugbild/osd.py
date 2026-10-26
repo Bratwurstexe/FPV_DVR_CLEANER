@@ -405,7 +405,8 @@ class _Probe:
 
 def remove_stream(frames: Iterable[np.ndarray], mask: np.ndarray, guide: np.ndarray | None = None,
                   radius: int = WINDOW, preset: int = cv2.DISOPTICAL_FLOW_PRESET_FAST,
-                  fill_scale: float = 1.0) -> Iterator[np.ndarray]:
+                  fill_scale: float = 1.0, always: np.ndarray | None = None,
+                  never: np.ndarray | None = None) -> Iterator[np.ndarray]:
     """Yield frames with the clip mask plus briefly shown overlays painted out.
 
     The clip mask gathers everything shown at some point of the cut, such as
@@ -415,6 +416,10 @@ def remove_stream(frames: Iterable[np.ndarray], mask: np.ndarray, guide: np.ndar
     The sliding sums that find brief overlays are kept in order here; flows,
     overlay shapes and the refill of each frame run on the shared pool.
     ``fill_scale`` below one inpaints uncovered regions at a reduced size.
+
+    ``always`` and ``never`` are hand corrections (0/255, see handmask.py):
+    ``always`` is painted out in every frame, ``never`` in none, whatever the
+    on-screen check and the search for brief overlays decide.
     """
     patchers = PerThread(lambda: _Patcher(preset))
     widen = np.ones((3, 11), np.uint8)
@@ -426,6 +431,8 @@ def remove_stream(frames: Iterable[np.ndarray], mask: np.ndarray, guide: np.ndar
         share = partial(_shown_share, guide=guide, labels=labels, elements=elements)
         # Elements without steady edges cannot be checked; they stay removed.
         unguided = np.bincount(labels[guide > 0], minlength=elements) == 0
+    forced = cv2.dilate(always, widen) if always is not None and always.any() else None
+    spared = cv2.bitwise_not(never) if never is not None and never.any() else None
 
     def finish(frame: np.ndarray, edges: np.ndarray | None, shown: np.ndarray | None, picture: np.ndarray,
                neighbours: list[np.ndarray], flows: list[Callable[[], np.ndarray]]) -> np.ndarray:
@@ -435,6 +442,10 @@ def remove_stream(frames: Iterable[np.ndarray], mask: np.ndarray, guide: np.ndar
         if edges is not None:
             brief = _text_rows(_overlay_shapes(edges, picture), frame)
             regions = regions | cv2.dilate(brief, widen)
+        if forced is not None:
+            regions = regions | forced
+        if spared is not None:
+            regions = regions & spared
         return patchers.get().apply(frame, regions, [(other, flow()) for other, flow in zip(neighbours, flows)],
                                     fill_scale)
 

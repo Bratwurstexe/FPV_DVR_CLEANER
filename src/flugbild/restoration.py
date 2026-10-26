@@ -25,6 +25,7 @@ from .learning import Signalsignatur
 from .look import Look, look_frame, look_stream
 from .neural import NeuralProfile
 from .media import PROCESS_FLAGS, VideoKenndaten
+from . import handmask
 from .osd import detect_osd, remove_stream
 from .processor import (Laufergebnis, caption_workspace, encoding_options,
                         diagnostic_tail, output_duration, temporary_output, video_filters)
@@ -32,8 +33,9 @@ from .recipe import Arbeitsrezept
 from .upscale import fuse_stream, target_size
 
 
-# OSD mask (0/255) and guide of steady edge orientations, see osd.find_osd.
-Overlay = tuple[np.ndarray, np.ndarray]
+# OSD mask (0/255) and guide of steady edge orientations, see osd.find_osd. With
+# hand corrections two more layers follow: always and never removed (handmask.merge).
+Overlay = tuple[np.ndarray, ...]
 
 
 
@@ -193,7 +195,10 @@ def _stages(frames: Iterable[np.ndarray], recipe: Arbeitsrezept,
     if fingerprint is not None:
         stream = _model_stage(stream, recipe, fingerprint)
     if recipe.osd_entfernen and osd is not None:
-        stream = remove_stream(stream, *osd, effort.osd_radius, effort.osd_flow, effort.osd_fill)
+        mask, guide, *manual = osd
+        always, never = manual if manual else (None, None)
+        stream = remove_stream(stream, mask, guide, effort.osd_radius, effort.osd_flow, effort.osd_fill,
+                               always=always, never=never)
     if _fused(recipe):
         stream = fuse_stream(stream, recipe.vergroesserung_prozent, recipe.rauschminderung / 100,
                              recipe.kantendetail / 50, effort.fusion_radius, effort.fusion_flow,
@@ -206,22 +211,34 @@ def _stages(frames: Iterable[np.ndarray], recipe: Arbeitsrezept,
 
 def clip_mask(source: Path, recipe: Arbeitsrezept, info: VideoKenndaten,
                duration: float) -> Overlay | None:
-    """OSD mask and guide for the cut: required for OSD removal, optional protection otherwise."""
+    """OSD mask and guide for the cut: required for OSD removal, optional protection otherwise.
+
+    Hand corrections from the mask editor (``recipe.osd_handmaske``) are merged in.
+    """
+    shape = (info.height, info.width)
+    layers = handmask.read(recipe.osd_handmaske, shape)
     if recipe.osd_entfernen:
-        return detect_osd(source, recipe.schnittbeginn, duration, info.width, info.height)
+        try:
+            found = detect_osd(source, recipe.schnittbeginn, duration, info.width, info.height)
+        except ValueError:
+            # A cut too short for the search can still have its OSD painted by hand.
+            if layers is None or not layers[0].any():
+                raise
+            found = None
+        return handmask.merge(found, layers, shape)
     if recipe.signalart == "analog" and recipe.farbberuhigung > 0:
         try:
-            return detect_osd(source, recipe.schnittbeginn, duration, info.width, info.height)
+            found = detect_osd(source, recipe.schnittbeginn, duration, info.width, info.height)
         except ValueError:
-            return None  # Very short cuts: repair without OSD protection.
+            found = None  # Very short cuts: repair without OSD protection.
+        return handmask.merge(found, layers, shape)
     return None
 
 
 def _crop(osd: Overlay, box: tuple[int, int, int, int]) -> Overlay:
+    """Every layer of the overlay cut to the picture inside the bars."""
     x, y, width, height = box
-    mask, guide = osd
-    return (np.ascontiguousarray(mask[y:y + height, x:x + width]),
-            np.ascontiguousarray(guide[y:y + height, x:x + width]))
+    return tuple(np.ascontiguousarray(layer[y:y + height, x:x + width]) for layer in osd)
 
 
 BAR_LEVEL = 24
@@ -297,44 +314,79 @@ def preview_frames(source: Path, seconds: float, recipe: Arbeitsrezept, info: Vi
     stage sees real neighbours; ``osd`` can carry a mask detected earlier.
     Without a look the last two are the same picture.
     """
-    recipe.validate()
-    if fingerprint is not None and fingerprint.signalart != recipe.signalart:
-        raise ValueError("Signal model does not match the selected processing mode")
-    duration = output_duration(info, recipe)
-    if osd is None:
-        osd = clip_mask(source, recipe, info, duration)
-    box = picture_box(source, recipe.schnittbeginn, duration, info.width, info.height)
-    lead, span = 0.25, 0.5
-    start = max(0.0, seconds - lead)
-    preroll = min(3.0, start)
-    args = ["ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "quiet", "-ss", str(start - preroll),
-            "-i", str(source), "-ss", str(preroll), "-t", str(span), "-map", "0:v:0",
-            "-f", "rawvideo", "-pix_fmt", "bgr24", "pipe:1"]
-    raw = subprocess.run(args, capture_output=True, timeout=120, creationflags=PROCESS_FLAGS).stdout
-    size = info.width * info.height * 3
-    frames = [np.frombuffer(raw[index:index + size], np.uint8).reshape(info.height, info.width, 3)
-              for index in range(0, len(raw) - size + 1, size)]
-    if not frames:
-        raise ValueError("Could not decode frames at this moment")
-    middle = min(len(frames) - 1, round((seconds - start) / span * len(frames)))
-    x, y, inner_width, inner_height = box
-    pictures = [np.ascontiguousarray(frame[y:y + inner_height, x:x + inner_width]) for frame in frames]
-    if osd is not None:
-        osd = _crop(osd, box)
-    # Stages are lazy: stop as soon as the frame of interest has come through.
-    # The look is the last stage and needs no neighbours, so it is applied to
-    # that one frame only, with the frame number an export would give it.
-    plain = next(islice(_stages(pictures, recipe, fingerprint, osd, look=False), middle, None))
-    finished = look_frame(plain, Look.of(recipe), round(start * info.fps) + middle)
-    _, (full_width, full_height), (left, top) = _placement(box, info.width, info.height,
-                                                           recipe.vergroesserung_prozent)
+    window = PreviewWindow.decode(source, seconds, recipe, info, osd)
+    plain, finished = window.render(recipe, fingerprint)
+    return window.frames[window.middle], window.placed(plain, recipe), window.placed(finished, recipe)
 
-    def placed(picture: np.ndarray) -> np.ndarray:
+
+def encoder_detail(picture: np.ndarray, recipe: Arbeitsrezept) -> np.ndarray:
+    """The edge detail the encoder adds when no fusion stage does (FFmpeg unsharp 5x5 on luma)."""
+    amount = recipe.kantendetail / 100
+    if not amount or _fused(recipe):
+        return picture
+    planes = cv2.cvtColor(picture, cv2.COLOR_BGR2YCrCb)
+    luma = planes[:, :, 0].astype(np.float32)
+    planes[:, :, 0] = np.clip(luma + amount * (luma - cv2.GaussianBlur(luma, (5, 5), 0)), 0, 255).astype(np.uint8)
+    return cv2.cvtColor(planes, cv2.COLOR_YCrCb2BGR)
+
+
+@dataclass
+class PreviewWindow:
+    """Decoded frames around one moment, ready to be rendered with several recipes."""
+
+    frames: list[np.ndarray]
+    pictures: list[np.ndarray]
+    middle: int
+    start: float
+    box: tuple[int, int, int, int]
+    osd: Overlay | None
+    info: VideoKenndaten
+
+    @classmethod
+    def decode(cls, source: Path, seconds: float, recipe: Arbeitsrezept, info: VideoKenndaten,
+               osd: Overlay | None = None, lead: float = 0.25, span: float = 0.5) -> PreviewWindow:
+        recipe.validate()
+        duration = output_duration(info, recipe)
+        if osd is None:
+            osd = clip_mask(source, recipe, info, duration)
+        box = picture_box(source, recipe.schnittbeginn, duration, info.width, info.height)
+        start = max(0.0, seconds - lead)
+        preroll = min(3.0, start)
+        args = ["ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "quiet", "-ss", str(start - preroll),
+                "-i", str(source), "-ss", str(preroll), "-t", str(span), "-map", "0:v:0",
+                "-f", "rawvideo", "-pix_fmt", "bgr24", "pipe:1"]
+        raw = subprocess.run(args, capture_output=True, timeout=120, creationflags=PROCESS_FLAGS).stdout
+        size = info.width * info.height * 3
+        frames = [np.frombuffer(raw[index:index + size], np.uint8).reshape(info.height, info.width, 3)
+                  for index in range(0, len(raw) - size + 1, size)]
+        if not frames:
+            raise ValueError("Could not decode frames at this moment")
+        middle = min(len(frames) - 1, round((seconds - start) / span * len(frames)))
+        x, y, inner_width, inner_height = box
+        pictures = [np.ascontiguousarray(frame[y:y + inner_height, x:x + inner_width]) for frame in frames]
+        return cls(frames, pictures, middle, start, box, _crop(osd, box) if osd is not None else None, info)
+
+    def render(self, recipe: Arbeitsrezept, fingerprint: Signalsignatur | NeuralProfile | None = None,
+               osd: Overlay | None = None) -> tuple[np.ndarray, np.ndarray]:
+        """The picture (inside the bars) repaired without and with the look."""
+        recipe.validate()
+        if fingerprint is not None and fingerprint.signalart != recipe.signalart:
+            raise ValueError("Signal model does not match the selected processing mode")
+        # Stages are lazy: stop as soon as the frame of interest has come through.
+        # The look is the last stage and needs no neighbours, so it is applied to
+        # that one frame only, with the frame number an export would give it.
+        overlay = self.osd if osd is None else osd
+        plain = next(islice(_stages(self.pictures, recipe, fingerprint, overlay, look=False), self.middle, None))
+        finished = look_frame(plain, Look.of(recipe), round(self.start * self.info.fps) + self.middle)
+        return encoder_detail(plain, recipe), encoder_detail(finished, recipe)
+
+    def placed(self, picture: np.ndarray, recipe: Arbeitsrezept) -> np.ndarray:
+        """The picture back in a full frame with black bars, at the output size."""
+        _, (full_width, full_height), (left, top) = _placement(self.box, self.info.width, self.info.height,
+                                                               recipe.vergroesserung_prozent)
         result = np.zeros((full_height, full_width, 3), np.uint8)
         result[top:top + picture.shape[0], left:left + picture.shape[1]] = picture
         return result
-
-    return frames[middle], placed(plain), placed(finished)
 
 
 # Seconds of footage decoded before and after a cut as repair context.
