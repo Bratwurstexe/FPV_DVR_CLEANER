@@ -14,7 +14,7 @@
 
 All packages include the app, the video engine and FFmpeg: unpack and start, nothing else to install. [`SHA256SUMS.txt`](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/download/{TAG}/SHA256SUMS.txt) lists the checksum of every file.
 
-## New in 0.7.0
+## New in 0.7.1
 
 **Share-ready before/after videos**
 - After an export, press **Share** in the result view: one click on *Make video* turns the clip into a before/after video to post. The original and the cleaned clip are paired frame by frame, removed parts of the trim included.
