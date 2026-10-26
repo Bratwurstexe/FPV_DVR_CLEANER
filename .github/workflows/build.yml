@@ -83,10 +83,17 @@ jobs:
           cat test-output.txt
           if [ $status -ne 0 ]; then
             # Annotations are readable without signing in, unlike raw logs.
-            grep -E "^(FAIL|ERROR):|Error|assert" test-output.txt | head -15 | while read -r line; do
-              echo "::error title=Engine test on ${{ matrix.rid }}::$line"
-            done
-            tail -25 test-output.txt | tr '\n' '|' | sed 's/^/::error title=Test output tail::/'; echo
+            # One annotation per failing test with its whole traceback (%0A is a line break there).
+            python - "${{ matrix.rid }}" <<'EOF'
+          import re, sys
+          text = open("test-output.txt", encoding="utf-8", errors="replace").read()
+          for block in re.split(r"\n={20,}\n", text)[1:9]:
+              body = block.split("\n" + "-" * 70 + "\n", 1)
+              name = body[0].strip()
+              trace = (body[1] if len(body) > 1 else "").strip()[-3500:]
+              trace = trace.replace("%", "%25").replace("\r", "").replace("\n", "%0A")
+              print(f"::error title=Engine test on {sys.argv[1]}: {name[:120]}::{trace}")
+          EOF
           fi
           exit $status
 
