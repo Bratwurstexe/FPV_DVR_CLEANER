@@ -169,16 +169,17 @@ class LookExportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as workdir:
             folder = Path(workdir)
             source = folder / "flight.mp4"
+            # A flat mid-grey picture: what the vignette does to it is known exactly, whatever
+            # FFmpeg build renders it. A test pattern made the outcome depend on its content.
             subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-                            "-f", "lavfi", "-i", "testsrc2=size=160x96:rate=12",
+                            "-f", "lavfi", "-i", "color=c=0x808080:size=160x96:rate=12",
                             "-f", "lavfi", "-i", "sine=frequency=440",
                             "-t", "1.5", "-c:v", "libx264", "-pix_fmt", "yuv420p",
                             "-c:a", "aac", str(source)], check=True)
             info = inspect_video(source)
             # HDZero without any repair: without the look this is a plain FFmpeg copy.
             plain = dict(signalart="digital", blockpflege=0, kantendetail=0, kompressionswert=14, aufwand="fast")
-            styled = dict(plain, look=True, look_farbstimmung=1.0, look_leuchten=0.7, look_farbsaum=0.5,
-                          look_vignette=0.6, look_koernung=0.15)
+            styled = dict(plain, look=True, look_vignette=1.0)
             for name, recipe in (("plain", plain), ("styled", styled)):
                 target = folder / f"{name}.mp4"
                 run({"action": "export", "source": str(source), "target": str(target),
@@ -189,8 +190,6 @@ class LookExportTests(unittest.TestCase):
                 self.assertAlmostEqual(made.duration, 1.5, delta=0.3)
 
             def average_frame(path: Path) -> np.ndarray:
-                # Every frame read in order and averaged: seeking lands on different frames of
-                # the moving test pattern with different FFmpeg builds (it did on macOS).
                 capture = cv2.VideoCapture(str(path))
                 frames = []
                 while True:
@@ -203,10 +202,13 @@ class LookExportTests(unittest.TestCase):
                 return np.mean(frames, axis=0)
 
             before, after = average_frame(folder / "plain.mp4"), average_frame(folder / "styled.mp4")
-            # The vignette darkens the corners, the middle stays close.
-            corner = (slice(0, 12), slice(0, 16))
-            self.assertLess(after[corner].mean(), before[corner].mean() - 8)
-            self.assertLess(abs(after[40:56, 72:88].mean() - before[40:56, 72:88].mean()), 25)
+            corner, middle = (slice(0, 12), slice(0, 16)), (slice(40, 56), slice(72, 88))
+            # The plain copy keeps the grey everywhere.
+            self.assertAlmostEqual(before[corner].mean(), 128, delta=4)
+            self.assertAlmostEqual(before[middle].mean(), 128, delta=4)
+            # The full vignette takes about 40 % off the corner block and leaves the middle alone.
+            self.assertLess(after[corner].mean(), 100)
+            self.assertAlmostEqual(after[middle].mean(), 128, delta=6)
 
     def test_preview_writes_the_frame_without_the_look_too(self):
         with tempfile.TemporaryDirectory() as workdir:
