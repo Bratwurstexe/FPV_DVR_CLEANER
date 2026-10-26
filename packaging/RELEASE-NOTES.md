@@ -20,6 +20,19 @@ Clean up analog and HDZero DVR recordings on your own computer: rainbow stripes,
 
 `SHA256SUMS.txt` lists the checksum of every package.
 
+## New in 0.7.0
+
+**Share-ready before/after videos**
+- After an export, press **Share** in the result view: one click on *Make video* turns the clip into a before/after video to post. The original and the cleaned clip are paired frame by frame, removed parts of the trim included.
+- **16:9 for YouTube** (1920×1080): side by side with *ORIGINAL* and *CLEANED* labels, a wipe with an orange split line that sweeps across, or a flip that switches between the two every two seconds.
+- **9:16 for Shorts, Reels and TikTok** (1080×1920): original above cleaned, or one full-screen cleaned picture under a moving wipe that follows the action.
+- **Slow motion on the biggest repairs:** frames where the repair changed the most, such as an HDZero breakup or a rainbow tear, are slowed to ×0.25 and frozen for a second, with a small tag.
+- **Best 15, 30 or 60 seconds**, chosen around the strongest repairs, or the whole clip. Sound is kept for 16:9 and left out for 9:16, where music is usually added on the platform; both can be changed.
+- A small *Cleaned with FPV DVR Cleaner* in the corner, which you can switch off. H.264 MP4 at 30 or 60 fps, saved next to the cleaned file as `…-share.mp4` or `…-short.mp4`. Your choices are remembered.
+
+**Cleaner buttons**
+- The zoom, transport and queue buttons use drawn icons, centred exactly; disabled queue arrows fade instead of changing colour.
+
 ## New in 0.6.0
 
 **Pick the file format**

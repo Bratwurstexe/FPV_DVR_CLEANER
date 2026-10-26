@@ -21,6 +21,7 @@ from .processor import process_one
 from .recipe import DATEIFORMATE, Arbeitsrezept
 from .restoration import clip_mask, picture_box, preview_frames, process_temporal
 from .segments import audio_outline, concat_files, export_segments, normalize_segments
+from .share import Teilauftrag, make_share
 from .assess import assess, sample_frames
 
 
@@ -185,6 +186,17 @@ def run(settings: dict) -> None:
                                  for start, end in segments])
         after = sample_frames(cleaned, made, 0.0, made.duration)
         emit("result", **assess(before, after, int(settings.get("quality", 18)), settings.get("signal", "analog")))
+    elif action == "share":
+        # A before/after video of one export, ready to post.
+        job = Teilauftrag.of(settings)
+        outcome = make_share(Path(settings["source"]), Path(settings["target"]), Path(settings["output"]),
+                             settings.get("segments"), job, lambda ratio: emit("progress", fraction=ratio),
+                             threading.Event())
+        if not outcome.result.success:
+            raise RuntimeError(outcome.result.message)
+        emit("result", target=settings["output"], duration=outcome.duration, width=outcome.size[0],
+             height=outcome.size[1], fps=outcome.fps, window=list(outcome.window),
+             highlights=outcome.highlights, sound=outcome.sound)
     elif action == "merge":
         parts = [Path(item) for item in settings["sources"]]
         if len(parts) < 2:

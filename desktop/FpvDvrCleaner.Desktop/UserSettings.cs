@@ -48,6 +48,20 @@ public sealed class ClipMemory
     [JsonPropertyName("seen")] public long Seen { get; set; }
 }
 
+/// <summary>How the last share video was made: format, layout per format, length and the extras.</summary>
+public sealed class ShareChoices
+{
+    [JsonPropertyName("format")] public string Format { get; set; } = "landscape";
+    [JsonPropertyName("layoutLandscape")] public string LayoutLandscape { get; set; } = "side";
+    [JsonPropertyName("layoutVertical")] public string LayoutVertical { get; set; } = "stacked";
+    [JsonPropertyName("length")] public int Length { get; set; } = 30;
+    [JsonPropertyName("highlights")] public bool Highlights { get; set; } = true;
+    // Sound is on for 16:9 and off for 9:16, where music is usually added on the platform.
+    [JsonPropertyName("soundLandscape")] public bool SoundLandscape { get; set; } = true;
+    [JsonPropertyName("soundVertical")] public bool SoundVertical { get; set; }
+    [JsonPropertyName("watermark")] public bool Watermark { get; set; } = true;
+}
+
 /// <summary>
 /// Choices the user should not have to repeat, kept in the per-user application
 /// data folder (next to the trained models). Missing or damaged files are ignored.
@@ -64,6 +78,8 @@ public sealed class UserSettings
     [JsonPropertyName("lastRepair")] public RepairPreset? LastRepair { get; set; }
     [JsonPropertyName("presets")] public List<RepairPreset> Presets { get; set; } = [];
     [JsonPropertyName("clips")] public Dictionary<string, ClipMemory> Clips { get; set; } = new();
+    // The last share video choices; settings files from before Share load with these defaults.
+    [JsonPropertyName("share")] public ShareChoices Share { get; set; } = new();
 
     private const int RememberedClips = 300;
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };

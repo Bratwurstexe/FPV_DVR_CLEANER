@@ -30,6 +30,11 @@
     <Style Selector="Button.step.current /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#424B54"/><Setter Property="Foreground" Value="White"/></Style>
     <Style Selector="Button.step.current:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#4B555E"/><Setter Property="Foreground" Value="White"/></Style>
     <Style Selector="Button.row"><Setter Property="Background" Value="Transparent"/><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Left"/></Style>
+    <!-- Square icon buttons of the queue rows: as tall as Copy and Trim, the vector icon centred exactly.
+         Disabled keeps the same background; only the icon fades (see MainWindow.VectorIcon). -->
+    <Style Selector="Button.square"><Setter Property="Width" Value="30"/><Setter Property="Height" Value="30"/><Setter Property="MinWidth" Value="30"/><Setter Property="Padding" Value="0"/><Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style>
+    <Style Selector="Button.square:disabled /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#E8E9E6"/></Style>
+    <Style Selector="Button.square:disabled Path"><Setter Property="Opacity" Value="0.35"/></Style>
     <Style Selector="Button.remove"><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#9C3F1F"/><Setter Property="FontWeight" Value="Bold"/></Style>
     <Style Selector="Button.remove:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#F6DED4"/><Setter Property="Foreground" Value="#7A2E14"/></Style>
 
@@ -146,20 +151,20 @@
           <Border Grid.Row="1" Margin="16,10,16,0">
             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
               <StackPanel Orientation="Horizontal" Spacing="4">
-                <Button Classes="dark" Content="&#x23EE;" ToolTip.Tip="Go to start (Home)" Click="GoStart_Click"/>
-                <Button Classes="dark" Content="&#x25C0;&#x25C0;" ToolTip.Tip="Previous cut edge or bookmark (Page Up)" Click="PrevEdge_Click"/>
+                <Button Classes="dark" MinWidth="38" MinHeight="30" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Go to start (Home)" Click="GoStart_Click"><Path Data="M0,0 H1.8 V10 H0 Z M7.2,0 V10 L1.8,5 Z M12.6,0 V10 L7.2,5 Z" Width="12.6" Height="10" Fill="{Binding $parent[Button].Foreground}" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center"/></Button>
+                <Button Classes="dark" MinWidth="44" MinHeight="30" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Previous cut edge or bookmark (Page Up)" Click="PrevEdge_Click"><Path Data="M6.5,0 V10 L0,5 Z M13,0 V10 L6.5,5 Z" Width="13" Height="10" Fill="{Binding $parent[Button].Foreground}" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center"/></Button>
                 <Button Classes="dark" Content="&#x2212;1 s" ToolTip.Tip="Back one second (Left; Shift: 5 s)" Click="Back_Click"/>
                 <Button x:Name="PlayButton" Classes="dark" Content="&#x25B6; Play" MinWidth="92" ToolTip.Tip="Quick play through the kept parts (Space)" Click="Play_Click"/>
                 <Button Classes="dark" Content="+1 s" ToolTip.Tip="Forward one second (Right; Shift: 5 s)" Click="Forward_Click"/>
-                <Button Classes="dark" Content="&#x25B6;&#x25B6;" ToolTip.Tip="Next cut edge or bookmark (Page Down)" Click="NextEdge_Click"/>
-                <Button Classes="dark" Content="&#x23ED;" ToolTip.Tip="Go to end (End)" Click="GoEnd_Click"/>
+                <Button Classes="dark" MinWidth="44" MinHeight="30" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Next cut edge or bookmark (Page Down)" Click="NextEdge_Click"><Path Data="M0,0 V10 L6.5,5 Z M6.5,0 V10 L13,5 Z" Width="13" Height="10" Fill="{Binding $parent[Button].Foreground}" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center"/></Button>
+                <Button Classes="dark" MinWidth="38" MinHeight="30" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Go to end (End)" Click="GoEnd_Click"><Path Data="M0,0 V10 L5.4,5 Z M5.4,0 V10 L10.8,5 Z M10.8,0 H12.6 V10 H10.8 Z" Width="12.6" Height="10" Fill="{Binding $parent[Button].Foreground}" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center"/></Button>
               </StackPanel>
               <TextBlock x:Name="CutSummary" Grid.Column="1" Text="" Foreground="#FFC08E" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"/>
               <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
                 <ToggleButton x:Name="SnapToggle" Classes="tool" Content="Snap" IsChecked="True" ToolTip.Tip="Snap to cut edges, bookmarks and the ruler while dragging" IsCheckedChanged="Snap_Changed"/>
-                <Button Classes="tool" Content="&#x2212;" Width="30" Padding="0,4" FontSize="15" FontWeight="SemiBold" ToolTip.Tip="Zoom out (-)" Click="ZoomOut_Click"/>
+                <Button Classes="tool" Width="30" Height="28" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Zoom out (-)" Click="ZoomOut_Click"><Path Data="M0,5 L10,5" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.8" StrokeLineCap="Round" Width="10" Height="10" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center"/></Button>
                 <Slider x:Name="ZoomSlider" Width="110" Minimum="1" Maximum="60" Value="1" VerticalAlignment="Center" ValueChanged="Zoom_Changed"/>
-                <Button Classes="tool" Content="+" Width="30" Padding="0,4" FontSize="15" FontWeight="SemiBold" ToolTip.Tip="Zoom in (+, or Ctrl + mouse wheel)" Click="ZoomIn_Click"/>
+                <Button Classes="tool" Width="30" Height="28" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Zoom in (+, or Ctrl + mouse wheel)" Click="ZoomIn_Click"><Path Data="M0,5 L10,5 M5,0 L5,10" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.8" StrokeLineCap="Round" Width="10" Height="10" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center"/></Button>
                 <Button Classes="tool" Content="Fit" ToolTip.Tip="Show the whole clip" Click="ZoomFit_Click"/>
               </StackPanel>
             </Grid>
@@ -425,12 +430,15 @@
                 <TextBlock x:Name="ReviewNote" Classes="note" FontSize="11" Text="Play both runs original and result in sync; drag the orange line in the picture to compare."/>
               </StackPanel>
             </Grid>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
             <StackPanel Orientation="Horizontal" Spacing="10">
               <Button x:Name="AutoRefineButton" Classes="accent" FontSize="14" Padding="16,8" Content="&#x2728; Auto refine" ToolTip.Tip="Picks the settings from the measurement and exports the original again right away, as a new file. Nothing is lost." Click="AutoRefine_Click"/>
               <Button Content="Open output folder" Click="OpenOutput_Click"/>
               <Button Content="Try other settings" ToolTip.Tip="Back to Repair with this clip: the original is exported again, without any quality loss" Click="TryAgain_Click"/>
               <Button Content="Refine the cleaned file" ToolTip.Tip="Adds the cleaned file to the queue for a second pass, e.g. stronger noise reduction or upscaling" Click="Refine_Click"/>
             </StackPanel>
+              <Button x:Name="ShareButton" Grid.Column="1" Classes="dark" FontSize="14" Padding="16,8" Content="Share" ToolTip.Tip="Make a before/after video of this clip to post: YouTube, Shorts, Reels or TikTok" Click="Share_Click"/>
+            </Grid>
           </StackPanel></Border>
         </StackPanel>
 
@@ -462,6 +470,57 @@
           <Button x:Name="NextButton" Grid.Column="2" Classes="accent" Content="Next: Trim &#x2192;" Click="Next_Step_Click"/>
         </Grid>
       </Border>
+
+      <!-- Share: a before/after video of the finished clip. Good defaults; the rest folds out. -->
+      <Grid x:Name="ShareOverlay" Grid.Row="0" Grid.RowSpan="3" IsVisible="False" Background="#66101418">
+        <Border Background="White" CornerRadius="16" Padding="26,20" Width="560" HorizontalAlignment="Center" VerticalAlignment="Center" BoxShadow="0 12 40 0 #40000000">
+          <StackPanel Spacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Text="SHARE" Classes="eyebrow"/>
+              <TextBlock Text="A before/after video to post" Classes="heading"/>
+            </StackPanel>
+            <StackPanel Spacing="5">
+              <TextBlock Text="FORMAT" Classes="label"/>
+              <StackPanel Orientation="Horizontal">
+                <RadioButton x:Name="ShareLandscape" Classes="segment" GroupName="shareFormat" Content="16:9 &#x00B7; YouTube" IsChecked="True" IsCheckedChanged="ShareFormat_Changed"/>
+                <RadioButton x:Name="ShareVertical" Classes="segment" GroupName="shareFormat" Content="9:16 &#x00B7; Shorts, Reels, TikTok" IsCheckedChanged="ShareFormat_Changed"/>
+              </StackPanel>
+            </StackPanel>
+            <StackPanel Spacing="5">
+              <TextBlock Text="LAYOUT" Classes="label"/>
+              <StackPanel Orientation="Horizontal">
+                <RadioButton x:Name="ShareLayoutA" Classes="chip" GroupName="shareLayout" Content="Side by side" IsChecked="True" IsCheckedChanged="ShareLayout_Changed"/>
+                <RadioButton x:Name="ShareLayoutB" Classes="chip" GroupName="shareLayout" Content="Wipe" IsCheckedChanged="ShareLayout_Changed"/>
+                <RadioButton x:Name="ShareLayoutC" Classes="chip" GroupName="shareLayout" Content="Flip" IsCheckedChanged="ShareLayout_Changed"/>
+              </StackPanel>
+              <TextBlock x:Name="ShareLayoutNote" Classes="note" FontSize="12" Text=""/>
+            </StackPanel>
+            <Button x:Name="ShareMoreButton" Content="More options &#x25BE;" Padding="0" Background="Transparent" Foreground="#9A4100" FontSize="12" FontWeight="SemiBold" Click="ShareMore_Click"/>
+            <StackPanel x:Name="ShareMore" IsVisible="False" Spacing="8">
+              <StackPanel Spacing="5">
+                <TextBlock Text="LENGTH" Classes="label"/>
+                <StackPanel Orientation="Horizontal">
+                  <RadioButton x:Name="ShareWhole" Classes="chip" GroupName="shareLength" Content="Whole clip" Tag="0" IsCheckedChanged="ShareOption_Changed"/>
+                  <RadioButton x:Name="ShareBest15" Classes="chip" GroupName="shareLength" Content="Best 15 s" Tag="15" IsCheckedChanged="ShareOption_Changed"/>
+                  <RadioButton x:Name="ShareBest30" Classes="chip" GroupName="shareLength" Content="Best 30 s" Tag="30" IsChecked="True" IsCheckedChanged="ShareOption_Changed"/>
+                  <RadioButton x:Name="ShareBest60" Classes="chip" GroupName="shareLength" Content="Best 60 s" Tag="60" IsCheckedChanged="ShareOption_Changed"/>
+                </StackPanel>
+              </StackPanel>
+              <CheckBox x:Name="ShareHighlights" IsChecked="True" Content="Slow motion and a frozen frame on the biggest repairs" IsCheckedChanged="ShareOption_Changed"/>
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="18">
+                <CheckBox x:Name="ShareSound" IsChecked="True" Content="Sound" IsCheckedChanged="ShareOption_Changed"/>
+                <CheckBox x:Name="ShareWatermark" Grid.Column="1" IsChecked="True" Content="Small &#x201C;Cleaned with FPV DVR Cleaner&#x201D; in the corner" IsCheckedChanged="ShareOption_Changed"/>
+              </Grid>
+            </StackPanel>
+            <TextBlock x:Name="ShareStatus" Classes="note" FontSize="12" Text=""/>
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+              <Button x:Name="ShareFolderButton" Content="Open folder" IsVisible="False" Click="ShareFolder_Click"/>
+              <Button Grid.Column="1" Content="Close" Click="ShareClose_Click"/>
+              <Button x:Name="ShareMakeButton" Grid.Column="2" Classes="accent" Content="Make video" Click="ShareMake_Click"/>
+            </Grid>
+          </StackPanel>
+        </Border>
+      </Grid>
 
       <!-- Busy overlay: while the engine works, only this stays sharp -->
       <Grid x:Name="BusyOverlay" Grid.Row="0" Grid.RowSpan="3" IsVisible="False" Background="#66101418">
