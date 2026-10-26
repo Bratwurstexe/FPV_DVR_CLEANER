@@ -14,11 +14,12 @@ import cv2
 import numpy as np
 
 from .media import PROCESS_FLAGS, inspect_video, still_frame
+from .look import look_active
 from .neural import NeuralProfile, train_network
 from .osd import detect_osd, preview
 from .processor import process_one
-from .recipe import Arbeitsrezept
-from .restoration import clip_mask, picture_box, preview_frame, process_temporal
+from .recipe import DATEIFORMATE, Arbeitsrezept
+from .restoration import clip_mask, picture_box, preview_frames, process_temporal
 from .segments import audio_outline, concat_files, export_segments, normalize_segments
 from .assess import assess, sample_frames
 
@@ -52,8 +53,10 @@ def render_cut(source: Path, target: Path, recipe: Arbeitsrezept, info, mode: st
     if mode == "model":
         return process_temporal(source, target, recipe, info, profile, report, threading.Event())
     if (recipe.signalart == "analog" or recipe.osd_entfernen or recipe.vergroesserung_prozent != 100
-            or recipe.rauschminderung > 0 or (recipe.signalart == "digital" and recipe.blockpflege > 0)):
-        # Colour and breakup repair, OSD removal, noise reduction and upscaling work frame by frame.
+            or recipe.rauschminderung > 0 or (recipe.signalart == "digital" and recipe.blockpflege > 0)
+            or look_active(recipe)):
+        # Colour and breakup repair, OSD removal, noise reduction, upscaling and the look work
+        # frame by frame.
         return process_temporal(source, target, recipe, info, None, report, threading.Event())
     return process_one(source, target, recipe, info, report, threading.Event())
 
@@ -122,10 +125,15 @@ def run(settings: dict) -> None:
         profile = (NeuralProfile.load(Path(settings["model"]))
                    if settings.get("mode") == "model" else None)
         osd = cached_mask(source, recipe, info) if (recipe.osd_entfernen or recipe.signalart == "analog") else None
-        before, after = preview_frame(source, float(settings["seconds"]), recipe, info, profile, osd)
+        before, plain, after = preview_frames(source, float(settings["seconds"]), recipe, info, profile, osd)
         cv2.imwrite(settings["before"], before)
         cv2.imwrite(settings["after"], after)
-        emit("result", before=settings["before"], after=settings["after"])
+        # With a look, the repaired frame without it can be written too, to compare the two.
+        if settings.get("plain") and look_active(recipe):
+            cv2.imwrite(settings["plain"], plain)
+            emit("result", before=settings["before"], after=settings["after"], plain=settings["plain"])
+        else:
+            emit("result", before=settings["before"], after=settings["after"])
     elif action == "train":
         previous = (NeuralProfile.load(Path(settings["initial_model"]))
                     if settings.get("initial_model") else None)
@@ -145,6 +153,10 @@ def run(settings: dict) -> None:
     elif action == "export":
         source, target = Path(settings["source"]), Path(settings["target"])
         recipe = Arbeitsrezept(**settings["recipe"])
+        recipe.validate()
+        # FFmpeg picks the container from the file name, so it must match the format.
+        if target.suffix.lower() != DATEIFORMATE[recipe.dateiformat]:
+            raise ValueError(f"The output file must end in {DATEIFORMATE[recipe.dateiformat]} for this format")
         info = inspect_video(source)
         mode = settings["mode"]
         if mode not in {"manual", "model"}:

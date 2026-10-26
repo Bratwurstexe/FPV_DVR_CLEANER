@@ -18,6 +18,8 @@ from .recipe import Arbeitsrezept
 # x264 speed per processing effort. Slower presets mostly save file size at
 # the same quality setting (CRF); the picture barely changes.
 ENCODER_PRESETS = {"fast": "veryfast", "balanced": "faster", "best": "medium"}
+# libvpx-vp9 speed per effort; a higher number is faster and a little larger.
+VP9_SPEED = {"fast": 5, "balanced": 4, "best": 2}
 
 
 def _font_file() -> str:
@@ -77,8 +79,25 @@ def video_filters(recipe: Arbeitsrezept, *, preview: bool = False,
     if recipe.untertiteltext and not preview:
         chain.append("drawtext=fontfile=" + _font_file() +
                      ":textfile=caption.txt:expansion=none:fontcolor=white:fontsize=h/30:box=1:boxcolor=black@0.55:boxborderw=8:x=(w-text_w)/2:y=h-text_h-h/20")
-    chain.append("format=yuv420p" if not preview else "format=rgb24")
+    chain.append(f"format={pixel_format(recipe)}" if not preview else "format=rgb24")
     return ",".join(chain)
+
+
+def pixel_format(recipe: Arbeitsrezept) -> str:
+    # ProRes 422 is 10-bit 4:2:2; everything else plays best as 8-bit 4:2:0.
+    return "yuv422p10le" if recipe.dateiformat == "mov-prores" else "yuv420p"
+
+
+def quality_value(recipe: Arbeitsrezept) -> int:
+    """The quality setting (an x264 CRF, 14..32) on the scale of the chosen encoder.
+
+    x265 reaches the same picture at a CRF about five higher; VP9 counts 0..63.
+    """
+    if recipe.dateiformat == "mp4-hevc":
+        return min(51, recipe.kompressionswert + 5)
+    if recipe.dateiformat == "webm-vp9":
+        return round(recipe.kompressionswert * 1.3 + 5)
+    return recipe.kompressionswert
 
 
 def output_duration(info: VideoKenndaten, recipe: Arbeitsrezept) -> float:
@@ -108,7 +127,18 @@ def command(source: Path, target: Path, recipe: Arbeitsrezept, info: VideoKennda
 
 
 def encoding_options(recipe: Arbeitsrezept, info: VideoKenndaten, duration: float) -> list[str]:
-    args = ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart"]
+    form = recipe.dateiformat
+    if form == "mov-prores":
+        # ProRes has a fixed data rate per profile: quality and size cap do not apply.
+        return ["-c:v", "prores_ks", "-profile:v", "2", "-vendor", "apl0", "-pix_fmt", "yuv422p10le",
+                "-movflags", "+faststart", "-c:a", "pcm_s16le"]
+    codec = {"mp4-hevc": "libx265", "webm-vp9": "libvpx-vp9"}.get(form, "libx264")
+    args = ["-c:v", codec, "-pix_fmt", "yuv420p"]
+    if form.startswith("mp4-"):
+        args.extend(["-movflags", "+faststart"])
+    if form == "mp4-hevc":
+        # The hvc1 tag lets Apple players open the file; x265 is chatty otherwise.
+        args.extend(["-tag:v", "hvc1", "-x265-params", "log-level=error"])
     if recipe.dateiziel_mb:
         audio_bps = 128_000 if info.has_audio else 0
         video_bps = int((recipe.dateiziel_mb * 8_000_000 * 0.94) / duration) - audio_bps
@@ -116,8 +146,14 @@ def encoding_options(recipe: Arbeitsrezept, info: VideoKenndaten, duration: floa
             raise ValueError("Size cap is too small for this clip")
         args.extend(["-b:v", str(video_bps), "-maxrate", str(video_bps), "-bufsize", str(video_bps * 2)])
     else:
-        args.extend(["-crf", str(recipe.kompressionswert)])
-    args.extend(["-preset", ENCODER_PRESETS[recipe.aufwand], "-c:a", "aac", "-b:a", "128k"])
+        args.extend(["-crf", str(quality_value(recipe))])
+        if form == "webm-vp9":
+            args.extend(["-b:v", "0"])  # Constant quality instead of VP9's default bitrate.
+    if form == "webm-vp9":
+        args.extend(["-deadline", "good", "-cpu-used", str(VP9_SPEED[recipe.aufwand]), "-row-mt", "1",
+                     "-c:a", "libopus", "-b:a", "128k"])
+    else:
+        args.extend(["-preset", ENCODER_PRESETS[recipe.aufwand], "-c:a", "aac", "-b:a", "128k"])
     return args
 
 

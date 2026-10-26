@@ -18,6 +18,7 @@ class VideoKenndaten:
     height: int
     has_audio: bool
     fps: float = 0.0
+    codec: str = ""
 
 
 def _rate(text: str | None) -> float:
@@ -53,7 +54,8 @@ def inspect_video(path: Path) -> VideoKenndaten:
     # the real frame spacing; the stream's base rate matches the packets.
     fps = _rate(video.get("r_frame_rate")) or _rate(video.get("avg_frame_rate"))
     return VideoKenndaten(duration, int(video["width"]), int(video["height"]),
-                          any(stream.get("codec_type") == "audio" for stream in streams), fps)
+                          any(stream.get("codec_type") == "audio" for stream in streams), fps,
+                          str(video.get("codec_name") or ""))
 
 
 def still_frame(path: Path, seconds: float, destination: Path, filters: str = "") -> None:

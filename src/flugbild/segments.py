@@ -17,7 +17,7 @@ from typing import Callable
 
 import numpy as np
 
-from .media import PROCESS_FLAGS, VideoKenndaten
+from .media import PROCESS_FLAGS, VideoKenndaten, inspect_video
 from .processor import Laufergebnis, diagnostic_tail, temporary_output
 from .recipe import Arbeitsrezept
 
@@ -57,8 +57,16 @@ def segment_recipe(recipe: Arbeitsrezept, segment: Segment, duration: float) -> 
     return replace(recipe, schnittbeginn=start, schnittende=0.0 if end >= duration - 1e-6 else end)
 
 
+def join_options(target: Path, codec: str) -> list[str]:
+    """Container flags for joined parts: MP4 and MOV only; HEVC keeps its Apple-friendly tag."""
+    if target.suffix.lower() not in {".mp4", ".mov", ".m4v"}:
+        return []
+    return ["-movflags", "+faststart"] + (["-tag:v", "hvc1"] if codec == "hevc" else [])
+
+
 def concat_files(parts: list[Path], target: Path) -> Laufergebnis:
     """Join parts that were encoded with the same settings, without re-encoding."""
+    options = join_options(target, inspect_video(parts[0]).codec)
     pending = temporary_output(target)
     with tempfile.NamedTemporaryFile("w", suffix=".txt", prefix="fpv-concat-", delete=False,
                                      encoding="utf-8") as listing:
@@ -70,7 +78,7 @@ def concat_files(parts: list[Path], target: Path) -> Laufergebnis:
     try:
         proc = subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", "-y", "-loglevel", "error",
                                "-f", "concat", "-safe", "0", "-i", str(listing_path),
-                               "-c", "copy", "-movflags", "+faststart", str(pending)],
+                               "-c", "copy", *options, str(pending)],
                               stdout=subprocess.DEVNULL, stderr=log, creationflags=PROCESS_FLAGS)
         if proc.returncode:
             pending.unlink(missing_ok=True)

@@ -1,4 +1,5 @@
-"""Frame-by-frame export path: analog chroma repair, trained profiles, OSD removal.
+"""Frame-by-frame export path: analog chroma repair, HDZero breakups, trained
+profiles, OSD removal, fusion and the look.
 
 The methods use optical-flow alignment and conservative error gating. They do
 not claim to reconstruct content absent from every neighboring frame.
@@ -21,6 +22,7 @@ import numpy as np
 from .analog import repair_stream
 from .digital import repair_stream as mend_breakups
 from .learning import Signalsignatur
+from .look import Look, look_frame, look_stream
 from .neural import NeuralProfile
 from .media import PROCESS_FLAGS, VideoKenndaten
 from .osd import detect_osd, remove_stream
@@ -175,8 +177,12 @@ EFFORTS = {
 
 def _stages(frames: Iterable[np.ndarray], recipe: Arbeitsrezept,
             fingerprint: Signalsignatur | NeuralProfile | None,
-            osd: Overlay | None) -> Iterator[np.ndarray]:
-    """Chain the frame stages in their fixed order: colour or breakups, model, OSD, fusion."""
+            osd: Overlay | None, first_index: int = 0, look: bool = True) -> Iterator[np.ndarray]:
+    """Chain the frame stages in their fixed order: colour or breakups, model, OSD, fusion, look.
+
+    ``first_index`` is the frame number of the first frame in the recording; the
+    film grain of the look is seeded with it. ``look=False`` leaves the look out.
+    """
     effort = EFFORTS[recipe.aufwand]
     stream: Iterable[np.ndarray] = frames
     if recipe.signalart == "analog" and recipe.farbberuhigung > 0:
@@ -192,6 +198,9 @@ def _stages(frames: Iterable[np.ndarray], recipe: Arbeitsrezept,
         stream = fuse_stream(stream, recipe.vergroesserung_prozent, recipe.rauschminderung / 100,
                              recipe.kantendetail / 50, effort.fusion_radius, effort.fusion_flow,
                              effort.fusion_preset, effort.fusion_interpolation)
+    finish = Look.of(recipe)
+    if look and finish.active:
+        stream = look_stream(stream, finish, first_index)
     return iter(stream)
 
 
@@ -274,12 +283,23 @@ def _placement(box: tuple[int, int, int, int], width: int, height: int,
 def preview_frame(source: Path, seconds: float, recipe: Arbeitsrezept, info: VideoKenndaten,
                   fingerprint: Signalsignatur | NeuralProfile | None,
                   osd: Overlay | None = None) -> tuple[np.ndarray, np.ndarray]:
-    """Original and processed frame at ``seconds``, run through the full stage chain.
+    """Original and processed frame at ``seconds``, run through the full stage chain."""
+    before, _, after = preview_frames(source, seconds, recipe, info, fingerprint, osd)
+    return before, after
+
+
+def preview_frames(source: Path, seconds: float, recipe: Arbeitsrezept, info: VideoKenndaten,
+                   fingerprint: Signalsignatur | NeuralProfile | None,
+                   osd: Overlay | None = None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Original, repaired without the look, and fully processed frame at ``seconds``.
 
     A short run of frames around the moment is decoded so that every temporal
     stage sees real neighbours; ``osd`` can carry a mask detected earlier.
+    Without a look the last two are the same picture.
     """
     recipe.validate()
+    if fingerprint is not None and fingerprint.signalart != recipe.signalart:
+        raise ValueError("Signal model does not match the selected processing mode")
     duration = output_duration(info, recipe)
     if osd is None:
         osd = clip_mask(source, recipe, info, duration)
@@ -302,12 +322,19 @@ def preview_frame(source: Path, seconds: float, recipe: Arbeitsrezept, info: Vid
     if osd is not None:
         osd = _crop(osd, box)
     # Stages are lazy: stop as soon as the frame of interest has come through.
-    processed = next(islice(_stages(pictures, recipe, fingerprint, osd), middle, None))
+    # The look is the last stage and needs no neighbours, so it is applied to
+    # that one frame only, with the frame number an export would give it.
+    plain = next(islice(_stages(pictures, recipe, fingerprint, osd, look=False), middle, None))
+    finished = look_frame(plain, Look.of(recipe), round(start * info.fps) + middle)
     _, (full_width, full_height), (left, top) = _placement(box, info.width, info.height,
                                                            recipe.vergroesserung_prozent)
-    result = np.zeros((full_height, full_width, 3), np.uint8)
-    result[top:top + processed.shape[0], left:left + processed.shape[1]] = processed
-    return frames[middle], result
+
+    def placed(picture: np.ndarray) -> np.ndarray:
+        result = np.zeros((full_height, full_width, 3), np.uint8)
+        result[top:top + picture.shape[0], left:left + picture.shape[1]] = picture
+        return result
+
+    return frames[middle], placed(plain), placed(finished)
 
 
 # Seconds of footage decoded before and after a cut as repair context.
@@ -337,12 +364,13 @@ def _pump(decoder_args: list[str], encoder_args: list[str], workplace: str | Non
           frame_limit: int, recipe: Arbeitsrezept,
           fingerprint: Signalsignatur | NeuralProfile | None, osd: Overlay | None,
           cancel: threading.Event, report: Callable[[int], None],
-          skip: int = 0, decode_limit: int | None = None) -> str:
+          skip: int = 0, decode_limit: int | None = None, first_index: int = 0) -> str:
     """Decode frames, run the stages and encode ``frame_limit`` of them.
 
     ``skip`` frames before the cut and the frames after it (up to
     ``decode_limit`` decoded in all) give the first and last frames of the cut
     real neighbours to be repaired from; they are not written out.
+    ``first_index`` is the frame number of the first decoded frame.
     Returns an error message, or "" on success.
     """
     width, height = size
@@ -368,7 +396,7 @@ def _pump(decoder_args: list[str], encoder_args: list[str], workplace: str | Non
                 yield np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 3)
 
         passed = 0
-        for enhanced in _stages(decoded(), recipe, fingerprint, osd):
+        for enhanced in _stages(decoded(), recipe, fingerprint, osd, first_index):
             if cancel.is_set() or sent >= frame_limit:
                 break
             if passed < skip:
@@ -405,7 +433,7 @@ def process_temporal(source: Path, target: Path, recipe: Arbeitsrezept, info: Vi
                      fingerprint: Signalsignatur | NeuralProfile | None,
                      progress: Callable[[float], None],
                      cancel: threading.Event) -> Laufergebnis:
-    """Frame-by-frame export: analog repair, model, OSD removal, upscaling."""
+    """Frame-by-frame export: analog or HDZero repair, model, OSD removal, upscaling, look."""
     recipe.validate()
     if fingerprint is not None and fingerprint.signalart != recipe.signalart:
         raise ValueError("Signal model does not match the selected processing mode")
@@ -467,7 +495,8 @@ def process_temporal(source: Path, target: Path, recipe: Arbeitsrezept, info: Vi
         message = _pump(_decoder(source, recipe.schnittbeginn - lead_frames / fps, lead + duration + tail, fps, box),
                         encoder_args, workplace, (width, height), frame_limit, recipe, fingerprint, osd, cancel,
                         lambda sent: progress(min(1.0, sent / frame_limit)),
-                        skip=lead_frames, decode_limit=decode_limit)
+                        skip=lead_frames, decode_limit=decode_limit,
+                        first_index=max(0, round(recipe.schnittbeginn * fps) - lead_frames))
         if cancel.is_set():
             return Laufergebnis(source, target, False, "Canceled")
         if message:

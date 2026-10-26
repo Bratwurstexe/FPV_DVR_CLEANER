@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
-    <Version>0.5.1</Version>
+    <Version>0.6.0</Version>
     <Product>FPV DVR Cleaner</Product>
   </PropertyGroup>
 

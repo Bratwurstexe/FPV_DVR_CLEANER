@@ -20,6 +20,21 @@ Clean up analog and HDZero DVR recordings on your own computer: rainbow stripes,
 
 `SHA256SUMS.txt` lists the checksum of every package.
 
+## New in 0.6.0
+
+**Pick the file format**
+- The Export page has a file format choice: **MP4 · H.264** (plays everywhere, as before), **MP4 · H.265** (smallest files), **MOV · ProRes 422** (for video editors), **MKV · H.264** (robust container) and **WebM · VP9 + Opus** (for the web). Each option says what it is good for, and your choice is remembered.
+- File names, numbered copies, joined clips and *Auto refine* follow the chosen format. ProRes ignores the quality and size settings, so they are greyed out for it.
+- WebM files can be imported, so a WebM export can be checked or refined again.
+
+**A finished look, if you want one**
+- New *Look* card on the Repair page: colour grade, glow, vignette, film grain and lens fringe, each with a slider, or one of the presets *Clean*, *Cinematic*, *Punchy* and *Retro FPV*.
+- It is off by default and then changes nothing. When it is on, it is the last step after every repair, the frame preview shows it, and a second split compares the frame with and without it.
+- The grain follows the frame number, so the same cut exported twice gives the same file. Saved presets and your last settings include the look.
+
+**Sister project**
+- Restoring VHS tapes or old 8 mm / 16 mm film is moving into its own app, [Analog Repair](https://github.com/Bratwurstexe/ANALOG_REPAIR).
+
 ## New: the launcher
 
 - **One small program that keeps FPV DVR Cleaner up to date** on Windows, macOS and Linux. It detects your system and preselects it; you can still pick another one, for example to fetch the Mac version on a PC.

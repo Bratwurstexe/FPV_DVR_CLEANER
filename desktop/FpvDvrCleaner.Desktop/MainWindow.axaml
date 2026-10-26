@@ -47,6 +47,23 @@
     <Style Selector="RadioButton.segment:pointerover"><Setter Property="Background" Value="#DFE1DD"/></Style>
     <Style Selector="RadioButton.segment:checked"><Setter Property="Background" Value="#A64600"/><Setter Property="Foreground" Value="White"/></Style>
     <Style Selector="RadioButton.segment:checked:pointerover"><Setter Property="Background" Value="#8C3B00"/></Style>
+    <!-- Small rounded chips, e.g. the look presets; none is checked for custom values. -->
+    <Style Selector="RadioButton.chip">
+      <Setter Property="Foreground" Value="#20252B"/>
+      <Setter Property="Background" Value="#ECEDEA"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}" CornerRadius="12" Padding="11,4" Margin="0,0,6,0">
+            <ContentPresenter Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="RadioButton.chip:pointerover"><Setter Property="Background" Value="#DFE1DD"/></Style>
+    <Style Selector="RadioButton.chip:checked"><Setter Property="Background" Value="#A64600"/><Setter Property="Foreground" Value="White"/></Style>
+    <Style Selector="RadioButton.chip:checked:pointerover"><Setter Property="Background" Value="#8C3B00"/></Style>
+    <Style Selector="RadioButton.chip:disabled"><Setter Property="Opacity" Value="0.55"/></Style>
 
     <Style Selector="TextBox"><Setter Property="Background" Value="White"/><Setter Property="Foreground" Value="#20252B"/><Setter Property="BorderBrush" Value="#C9CDCB"/><Setter Property="CornerRadius" Value="8"/><Setter Property="Padding" Value="9,5"/><Setter Property="FontSize" Value="13"/></Style>
     <Style Selector="RadioButton.segment"><Setter Property="FontSize" Value="13"/></Style>
@@ -103,7 +120,7 @@
           <Border x:Name="DropZone" Background="#FFF8F2" BorderBrush="#E7B48F" BorderThickness="2" CornerRadius="14" Padding="28" DragDrop.AllowDrop="True">
             <StackPanel Spacing="10" HorizontalAlignment="Center">
               <TextBlock Text="Drop DVR recordings here" FontSize="20" FontWeight="SemiBold" Foreground="#20252B" HorizontalAlignment="Center"/>
-              <TextBlock Text=".ts .mp4 .mov .mkv .avi .m4v from analog or HDZero goggles and receivers" Classes="note" HorizontalAlignment="Center"/>
+              <TextBlock Text=".ts .mp4 .mov .mkv .avi .m4v .webm from analog or HDZero goggles and receivers" Classes="note" HorizontalAlignment="Center"/>
               <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,6,0,0">
                 <Button Classes="accent" Content="Browse files" Click="Add_Click"/>
                 <Button Content="Add a whole folder" Click="AddFolder_Click"/>
@@ -276,12 +293,59 @@
                 <Image x:Name="CompareAfter" Stretch="Uniform"/>
                 <Border x:Name="CompareDivider" Width="2" Background="#F08A3A" HorizontalAlignment="Left" IsVisible="False"/>
                 <Border x:Name="CompareGrip" Width="26" Height="26" CornerRadius="13" Background="#F08A3A" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="False" Cursor="SizeWestEast"><TextBlock Text="&#x25C2;&#x25B8;" Foreground="White" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
-                <Border Background="#B0000000" CornerRadius="6" Padding="8,3" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8"><TextBlock Text="ORIGINAL" Foreground="White" FontSize="11" FontWeight="Bold"/></Border>
+                <Border Background="#B0000000" CornerRadius="6" Padding="8,3" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8"><TextBlock x:Name="CompareLeftLabel" Text="ORIGINAL" Foreground="White" FontSize="11" FontWeight="Bold"/></Border>
                 <Border Background="#B0A64600" CornerRadius="6" Padding="8,3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8"><TextBlock Text="CLEANED" Foreground="White" FontSize="11" FontWeight="Bold"/></Border>
+                <ToggleButton x:Name="LookCompare" Classes="tool" Content="Compare without look" IsVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8" ToolTip.Tip="Left of the line: the repaired frame without the look instead of the original" IsCheckedChanged="LookCompare_Changed"/>
                 <TextBlock x:Name="CompareHint" Text="Render a frame to compare original and cleaned picture." Foreground="#AEB6BC" HorizontalAlignment="Center" VerticalAlignment="Center"/>
               </Grid>
               <Slider x:Name="CompareSlider" Minimum="0" Maximum="100" Value="50" IsVisible="False" ValueChanged="Compare_Changed"/>
               <TextBlock x:Name="PreviewStatus" Classes="note" FontSize="12" Text="The preview runs the full chain on a few frames around the playhead, so it takes a few seconds. Drag the orange line in the picture to compare."/>
+            </StackPanel></Border>
+            <!-- Look: an optional finish, applied after every repair. Compact; the sliders fold out. -->
+            <Border Classes="card tight"><StackPanel Spacing="8">
+              <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="12">
+                <TextBlock Text="LOOK" Classes="eyebrow" VerticalAlignment="Center"/>
+                <ToggleSwitch x:Name="LookToggle" Grid.Column="1" OnContent="On" OffContent="Off" VerticalAlignment="Center" ToolTip.Tip="Give the cleaned footage a finished look. Off leaves the picture exactly as repaired." IsCheckedChanged="LookToggle_Changed">
+                  <ToggleSwitch.Resources>
+                    <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#A64600"/>
+                    <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#8C3B00"/>
+                    <SolidColorBrush x:Key="ToggleSwitchFillOnPressed" Color="#6F2F00"/>
+                  </ToggleSwitch.Resources>
+                </ToggleSwitch>
+                <TextBlock x:Name="LookNote" Grid.Column="2" Classes="note" FontSize="11" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Text="Off: the picture stays exactly as repaired."/>
+                <Button x:Name="LookAdjustButton" Grid.Column="3" Content="Adjust" ToolTip.Tip="Show the five look sliders" Click="LookAdjust_Click"/>
+              </Grid>
+              <StackPanel x:Name="LookPresets" Orientation="Horizontal">
+                <RadioButton Classes="chip" GroupName="look" Content="Off" Tag="off" IsChecked="True" Click="LookPreset_Click"/>
+                <RadioButton Classes="chip" GroupName="look" Content="Clean" Tag="clean" ToolTip.Tip="A light grade and a hint of vignette" Click="LookPreset_Click"/>
+                <RadioButton Classes="chip" GroupName="look" Content="Cinematic" Tag="cinematic" ToolTip.Tip="Graded colour, soft glow, darker corners" Click="LookPreset_Click"/>
+                <RadioButton Classes="chip" GroupName="look" Content="Punchy" Tag="punchy" ToolTip.Tip="Strong contrast and colour, bright glow" Click="LookPreset_Click"/>
+                <RadioButton Classes="chip" GroupName="look" Content="Retro FPV" Tag="retro-fpv" ToolTip.Tip="Heavy vignette, grain and colour fringes like an old analog feed" Click="LookPreset_Click"/>
+                <TextBlock x:Name="LookCustom" Text="Custom" IsVisible="False" FontSize="12" FontWeight="SemiBold" Foreground="#9A4100" VerticalAlignment="Center" Margin="4,0,0,0"/>
+              </StackPanel>
+              <Grid x:Name="LookSliders" IsVisible="False" IsEnabled="False" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="18">
+                <StackPanel>
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6"><TextBlock Text="Colour grade" Classes="label"/><TextBlock Grid.Column="1" Classes="note" FontSize="11" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Text="contrast, cool shadows, warm light"/><TextBlock Grid.Column="2" x:Name="LookGradeValue" Text="0" Classes="label"/></Grid>
+                  <Slider x:Name="LookGradeSlider" Minimum="0" Maximum="100" Value="0" ValueChanged="LookSlider_Changed"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6"><TextBlock Text="Glow" Classes="label"/><TextBlock Grid.Column="1" Classes="note" FontSize="11" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Text="bright parts bloom softly"/><TextBlock Grid.Column="2" x:Name="LookGlowValue" Text="0" Classes="label"/></Grid>
+                  <Slider x:Name="LookGlowSlider" Minimum="0" Maximum="100" Value="0" ValueChanged="LookSlider_Changed"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6"><TextBlock Text="Vignette" Classes="label"/><TextBlock Grid.Column="1" Classes="note" FontSize="11" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Text="darker corners"/><TextBlock Grid.Column="2" x:Name="LookVignetteValue" Text="0" Classes="label"/></Grid>
+                  <Slider x:Name="LookVignetteSlider" Minimum="0" Maximum="100" Value="0" ValueChanged="LookSlider_Changed"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="1">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6"><TextBlock Text="Film grain" Classes="label"/><TextBlock Grid.Column="1" Classes="note" FontSize="11" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Text="fine noise like film"/><TextBlock Grid.Column="2" x:Name="LookGrainValue" Text="0" Classes="label"/></Grid>
+                  <Slider x:Name="LookGrainSlider" Minimum="0" Maximum="100" Value="0" ValueChanged="LookSlider_Changed"/>
+                </StackPanel>
+                <StackPanel Grid.Row="2">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6"><TextBlock Text="Lens fringe" Classes="label"/><TextBlock Grid.Column="1" Classes="note" FontSize="11" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Text="colour seams towards the edges"/><TextBlock Grid.Column="2" x:Name="LookFringeValue" Text="0" Classes="label"/></Grid>
+                  <Slider x:Name="LookFringeSlider" Minimum="0" Maximum="100" Value="0" ValueChanged="LookSlider_Changed"/>
+                </StackPanel>
+                <TextBlock Grid.Row="2" Grid.Column="1" Classes="note" FontSize="11" VerticalAlignment="Center" Text="Applied last, after every repair. Render the frame to see it."/>
+              </Grid>
             </StackPanel></Border>
           </StackPanel>
         </Grid>
@@ -295,6 +359,10 @@
             </Grid>
             <StackPanel x:Name="ExportDetails" Spacing="10">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><TextBox x:Name="OutputFolder" PlaceholderText="Folder for the cleaned files"/><Button Grid.Column="1" Content="Choose folder" Click="OutputFolder_Click"/></Grid>
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+              <StackPanel Spacing="4"><TextBlock Text="FILE FORMAT" Classes="label"/><ComboBox x:Name="FormatChoice" HorizontalAlignment="Stretch" SelectionChanged="Format_Changed"/></StackPanel>
+              <TextBlock x:Name="FormatNote" Grid.Column="1" Classes="note" FontSize="12" VerticalAlignment="Bottom" Margin="0,0,0,4" Text=""/>
+            </Grid>
             <Grid ColumnDefinitions="*,*,2*" ColumnSpacing="14">
               <StackPanel Spacing="4"><TextBlock Text="QUALITY (14 BEST &#x2013; 32 SMALLEST)" Classes="label"/><NumericUpDown x:Name="QualityValue" Minimum="14" Maximum="32" Value="18"/></StackPanel>
               <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="SIZE LIMIT, MB (0 = NONE)" Classes="label"/><NumericUpDown x:Name="SizeCap" Minimum="0" Maximum="10000" Value="0"/></StackPanel>

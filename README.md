@@ -19,6 +19,7 @@
 [![.NET 8](https://img.shields.io/badge/.NET-8-512BD4)](https://dotnet.microsoft.com)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB)](https://www.python.org)
 [![Stars](https://img.shields.io/github/stars/Bratwurstexe/FPV_DVR_CLEANER?style=flat&color=A64600)](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/stargazers)
+[![Downloads](https://img.shields.io/github/downloads/Bratwurstexe/FPV_DVR_CLEANER/total?label=downloads&color=2ea44f)](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases)
 
 **Open-source restoration for analog and HDZero DVR recordings.**
 Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, paints out the OSD and upscales the result, all on your own computer.
@@ -46,15 +47,19 @@ Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, 
 - **Noise reduction and streak repair.** Five motion-aligned frames are fused around a robust median. Grain calms down, bright or dark streaks disappear, and moving edges stay sharp.
 - **OSD removal.** Text, icons and bars that stay in place while the picture moves are found, including warnings that appear only briefly. They are refilled from frames where the scene behind them is visible. Screens that are shown only part of the time, such as the stats after landing, are removed only while they are on screen.
 - **Multi-frame upscaling.** 1.5× (720p to 1080p) or 2×. Neighbouring frames add detail instead of just enlarging a single frame.
+- **A finished look, if you want one.** Switch on a look to give the cleaned footage a final touch: colour grade, glow, vignette, film grain and lens fringe, each with its own slider, or one of the presets *Clean*, *Cinematic*, *Punchy* and *Retro FPV*. It is off by default and then changes nothing. The frame preview shows it, and a second split compares the frame with and without it.
 - **Timeline trim editor.** Cut a recording into parts and remove the ones you don't want, like in a video editor: split at the playhead, click a part, press Delete, and the rest closes up with a visible cut edge. Drag the edges to trim, snap to cuts and bookmarks, hover to scrub, Ctrl+wheel to zoom, undo and redo. The audio track is shown as a waveform, and playback decodes the real video, so it runs smoothly.
 - **Check before you export.** Render any frame through the whole chain and drag the split line across the picture to compare original and result.
 - **Watch the result live.** After the export, original and cleaned clip play side by side (or under a wipe you drag in the picture), frame-accurate to each other, with removed parts skipped. A measurement tells you how much was gained, how much is still possible without any loss, and what a second pass would cost. *Auto refine* picks the settings from that measurement and exports again with one click.
+- **Pick the file format.** MP4 with H.264 plays everywhere, MP4 with H.265 gives the smallest files, MOV with ProRes 422 is made for video editors, MKV is a robust container, and WebM with VP9 and Opus is for the web. The choice is remembered.
 - **Batch export.** Every clip keeps its own cut. The remaining time is shown live, you can cancel at any moment, and the original audio is kept. Clips can be joined into one video, the file name suffix is yours to choose, and the folder opens when it's done.
 - **Presets and memory.** Save your repair settings as presets. The last settings, the export folder and the cut of every recording come back the next time you start the app.
 - **CPU and GPU together.** Frames are repaired in parallel on every core, the full-resolution work of noise reduction and upscaling runs on the graphics card, black side bars are skipped, and a *Fast / Balanced / Best* setting trades time for quality. Without a usable GPU everything runs on the CPU with the same result. See [Speed](#speed).
 - **Optional local training.** A small self-supervised model can learn your receiver's pixel statistics from your own footage.
 - **One screen, one focus.** Every page fits the window without scrolling, the trim editor is a dark workspace with the preview as large as the window allows, and while the engine works the page blurs behind a single progress card.
 - **Private.** No account, no upload, no telemetry. Everything runs locally.
+
+Restoring VHS tapes or old 8 mm / 16 mm film? That lives in the sister project [Analog Repair](https://github.com/Bratwurstexe/ANALOG_REPAIR).
 
 ## Before and after
 
@@ -152,7 +157,9 @@ The current frame and two frames on each side are aligned onto the same grid. If
 - Every value is weighted by its distance to that reference. Where the aligned frames disagree among themselves, for example because of occlusion or a wrong motion estimate, the original pixel is kept, so nothing ghosts.
 - A mild, clipped detail lift follows, which avoids halos.
 
-The output is H.264 MP4 with the original audio. Results are written to a temporary file and only renamed when the export succeeds.
+**Look (optional).** When a look is switched on, it is the last step before the encoder, after every repair: a gentle grade (contrast, saturation, cool shadows and warm highlights), a glow from the brightest parts blurred at quarter size, red and blue scaled slightly apart towards the edges like a cheap lens, a vignette and film grain at half resolution. The grain is seeded with the frame number, so exporting the same cut twice gives the same file. When the look is off, this step does not run at all.
+
+The output is H.264 MP4 with the original audio unless you pick another format on the Export page: H.265 MP4, ProRes 422 MOV (with uncompressed sound), H.264 MKV or VP9 WebM (with Opus sound). Results are written to a temporary file and only renamed when the export succeeds.
 
 ### 5 · How it stays fast
 
@@ -171,8 +178,8 @@ The output is H.264 MP4 with the original audio. Results are written to a tempor
 
 1. **Import:** drop recordings onto the window or add a folder.
 2. **Trim:** split the recording at the playhead (`S`), click the parts you don't want and press `Delete`; the kept parts close up. Drag the `[` `]` edges to fine-tune, set bookmarks with `B`, play through the kept parts with `Space`.
-3. **Repair:** pick a preset or choose Analog or HDZero, colour repair, OSD removal, output size and processing speed, then press *Render this frame* to check the result.
-4. **Export:** choose a folder and start. The remaining time is shown live, and you can cancel at any moment. Afterwards, play original and result side by side, read the gain and headroom estimate, and press *Auto refine* to export again with settings chosen from it, or refine the cleaned file in a second pass.
+3. **Repair:** pick a preset or choose Analog or HDZero, colour repair, OSD removal, output size, processing speed and, if you like, a look, then press *Render this frame* to check the result.
+4. **Export:** choose a folder and a file format, then start. The remaining time is shown live, and you can cancel at any moment. Afterwards, play original and result side by side, read the gain and headroom estimate, and press *Auto refine* to export again with settings chosen from it, or refine the cleaned file in a second pass.
 
 ## Getting started
 
