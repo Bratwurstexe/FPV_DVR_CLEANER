@@ -254,10 +254,15 @@ jobs:
           done
       - name: Checksums
         run: cd release-assets && sha256sum FPV-DVR-Cleaner-* > SHA256SUMS.txt && cat SHA256SUMS.txt
+      # The download links at the top of the notes point at this release's own files.
+      - name: Release notes with this version's links
+        run: |
+          sed "s/{TAG}/${{ github.ref_name }}/g" packaging/RELEASE-NOTES.md > release-notes.md
+          if grep -q "{TAG}" release-notes.md; then echo "::error title=Release notes::{TAG} left in the notes"; exit 1; fi
       # GitHub adds the source code (zip and tar.gz) to every release by itself.
       - uses: softprops/action-gh-release@v2
         with:
           name: FPV DVR Cleaner ${{ github.ref_name }}
-          body_path: packaging/RELEASE-NOTES.md
+          body_path: release-notes.md
           files: release-assets/*
           make_latest: true
