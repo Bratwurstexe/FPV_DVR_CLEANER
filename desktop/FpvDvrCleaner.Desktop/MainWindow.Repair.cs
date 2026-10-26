@@ -242,7 +242,7 @@ public partial class MainWindow
         parts.Add(preset.Signal == "digital" ? $"{UiText.BlockLabel} {preset.Block}" : $"{UiText.ColourLabel} {preset.Colour}");
         parts.Add($"{UiText.NoiseLabel} {preset.Noise}");
         if (preset.Size != 100) parts.Add((preset.Size / 100.0).ToString("0.#", CultureInfo.InvariantCulture) + "×");
-        if (preset.Osd) parts.Add(UiText.OsdRemove + " OSD");
+        if (preset.Osd) parts.Add(UiText.OsdRemovedSummary);
         if (preset.Look) parts.Add(UiText.LookLabel);
         return string.Join(" · ", parts);
     }
@@ -380,7 +380,7 @@ public partial class MainWindow
     private async Task AutoRenderAsync()
     {
         if (_page != 2 || _selected is not { } clip || MaskOverlay.IsVisible || BusyOverlay.IsVisible) return;
-        await RenderCompareAsync(clip, BuildRecipe(clip), null, $"{clip} at {Clock(PreviewMoment(clip))}",
+        await RenderCompareAsync(clip, BuildRecipe(clip), null, UiText.F(UiText.ClipAt, clip, Clock(PreviewMoment(clip))),
             UiText.LabelOriginal, UiText.LabelCleaned, UiText.PreviewStatusDone, quiet: true);
     }
 
@@ -389,7 +389,7 @@ public partial class MainWindow
         if (_selected == null) { PreviewStatus.Text = UiText.NeedClip; return; }
         _autoRender.Stop();
         var clip = _selected;
-        await RenderCompareAsync(clip, BuildRecipe(clip), null, $"{clip} at {Clock(PreviewMoment(clip))}",
+        await RenderCompareAsync(clip, BuildRecipe(clip), null, UiText.F(UiText.ClipAt, clip, Clock(PreviewMoment(clip))),
             UiText.LabelOriginal, UiText.LabelCleaned, UiText.PreviewStatusDone);
     }
 
@@ -431,7 +431,7 @@ public partial class MainWindow
     private async Task RenderCompareAsync(FootageItem clip, object recipe, object? reference, string title,
         string leftLabel, string rightLabel, string doneText, string? busyText = null, bool quiet = false)
     {
-        if (Mode == "model" && !File.Exists(ModelPath.Text)) { PreviewStatus.Text = "Choose a trained model or switch the engine to Standard."; return; }
+        if (Mode == "model" && !File.Exists(ModelPath.Text)) { PreviewStatus.Text = UiText.NeedModelOrStandard; return; }
         _previewCancel?.Cancel();
         var cancel = _previewCancel = new CancellationTokenSource();
         var moment = PreviewMoment(clip);
@@ -442,8 +442,8 @@ public partial class MainWindow
         else
         {
             PreviewButton.IsEnabled = false;
-            PreviewStatus.Text = busyText ?? "Rendering the frame through every selected step…";
-            ShowBusy(reference == null ? "Rendering the frame" : title, busyText ?? $"{clip} at {Clock(moment)}, through every selected repair step.");
+            PreviewStatus.Text = busyText ?? UiText.RenderingFrameSteps;
+            ShowBusy(reference == null ? UiText.RenderingFrame : title, busyText ?? UiText.F(UiText.ClipAtSteps, clip, Clock(moment)));
         }
         try
         {
@@ -474,10 +474,10 @@ public partial class MainWindow
             UpdateCompare();
         }
         catch (OperationCanceledException) { }
-        catch (Exception ex) { if (!cancel.IsCancellationRequested) PreviewStatus.Text = $"Preview failed: {ex.Message}"; }
+        catch (Exception ex) { if (!cancel.IsCancellationRequested) PreviewStatus.Text = UiText.F(UiText.PreviewFailed, Loc.Engine(ex.Message)); }
         finally
         {
-            File.Delete(before); File.Delete(after); File.Delete(plain);
+            DeleteTemp(before, after, plain);
             if (ReferenceEquals(_previewCancel, cancel)) { RenderBadge.IsVisible = false; _previewCancel = null; }
             if (!quiet) { PreviewButton.IsEnabled = true; HideBusy(); }
             cancel.Dispose();
@@ -516,13 +516,13 @@ public partial class MainWindow
             _compareOriginal = _comparePlain = null; LookCompare.IsVisible = false; ShowCompareLeft();
             _compareAspect = clip.Box is { } cb ? (double)cb.Width / cb.Height : (double)clip.Width / clip.Height;
             CompareBefore.Source = marked; CompareAfter.Source = marked; CompareHint.IsVisible = false;
-            PreviewTitle.Text = "Overlays marked in orange";
+            PreviewTitle.Text = UiText.OverlaysMarked;
             PreviewStatus.Text = outcome.GetProperty("found").GetBoolean()
-                ? $"Found overlays on {outcome.GetProperty("coverage").GetDouble():0.0}% of the picture. Choose Remove to paint them out; Fix by hand adds what is missing."
-                : "No overlays found in this cut.";
+                ? UiText.F(UiText.OverlaysFound, outcome.GetProperty("coverage").GetDouble())
+                : UiText.NoOverlays;
         }
         catch (Exception ex) { PreviewStatus.Text = string.Format(CultureInfo.CurrentCulture, UiText.MaskFailed, ex.Message); }
-        finally { File.Delete(target); DetectOsdButton.IsEnabled = true; HideBusy(); }
+        finally { DeleteTemp(target); DetectOsdButton.IsEnabled = true; HideBusy(); }
     }
 
     private FootageItem? _maskClip;
@@ -561,7 +561,7 @@ public partial class MainWindow
         catch (Exception ex) { PreviewStatus.Text = string.Format(CultureInfo.CurrentCulture, UiText.MaskFailed, ex.Message); }
         finally
         {
-            foreach (var file in new[] { marked, frameFile, maskFile }) { try { File.Delete(file); } catch (IOException) { } }
+            DeleteTemp(marked, frameFile, maskFile);
             HideBusy();
             if (MaskOverlay.IsVisible) PageScroller.Effect = new BlurEffect { Radius = 10 };
         }

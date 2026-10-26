@@ -14,17 +14,16 @@
 
 All packages include the app, the video engine and FFmpeg: unpack and start, nothing else to install. [`SHA256SUMS.txt`](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/download/{TAG}/SHA256SUMS.txt) lists the checksum of every file.
 
-## New in 0.7.2
+## New in 0.8.0
 
-**Important fix: exports of whole recordings**
-- In 0.7.1, exporting a recording without trimming it could stop with *"Export failed: [Errno 32] Broken pipe"* when its sound ends a moment before its picture, which is common for DVR files. Older versions finished such exports but cut the video to the length of the sound. Now the sound is filled with silence to the full length, and every frame is kept.
-- If the encoder ever stops early, the message now says why instead of "Broken pipe".
-- Every release is now checked by running the packaged app's engine on recordings with shorter, longer and no sound, with OSD removal and hand corrections, every file format, trims, preview, the mask editor and Share; lengths, sizes and sound are compared before anything is published.
+**In your language**
+- FPV DVR Cleaner now speaks **15 languages**: English, Deutsch, Français, Español, Italiano, Português (Brasil), Nederlands, Polski, Čeština, Русский, Українська, Türkçe, 日本語, 简体中文 and 한국어.
+- It follows the language of your system; when yours is not among them, it starts in English. The menu at the bottom of the step rail switches the language at any time: the app restarts in the new language and keeps the clips of your queue.
+- Every page, button, hint, tooltip and preset name is translated, and so are the error messages of the video engine. Chinese, Japanese and Korean text is drawn with your system's fonts for those scripts, and every page was checked in every language so that nothing is cut off or overlaps.
 
-**Share is a plain export now**
-- **Share** in the result view brings the cleaned clip into the right format, nothing more: **16:9 for YouTube** (1920×1080, or 1280×720 for SD recordings; the picture centred on black) or **9:16 for Shorts, Reels and TikTok** (1080×1920; the picture fills the screen and pans smoothly along with the action).
-- The card asks only for the format and the sound (on for 16:9, off for 9:16 unless you change it) and then *Make video*. The whole clip as you trimmed it, H.264 MP4 at up to 60 fps, saved next to the cleaned file as `…-youtube.mp4` or `…-short.mp4`.
-- The original picture, side by side, wipe and flip layouts, labels, slow motion on repairs, "best N seconds" and the watermark are gone.
+**Tidier pages**
+- Long labels on the Repair page wrap onto a second line instead of being cut off; small grey hints that do not fit end in "…".
+- On the releases page only the newest release keeps its notes open; older releases fold their "New in …" and downloads away. The README shows the pictures first, the technical details fold out below.
 
 Earlier versions: see the [changelog](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/blob/main/CHANGELOG.md).
 

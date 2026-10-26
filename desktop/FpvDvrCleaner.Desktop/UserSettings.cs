@@ -133,6 +133,8 @@ public sealed class UserSettings
     [JsonPropertyName("clips")] public Dictionary<string, ClipMemory> Clips { get; set; } = new();
     // The last share video choices; settings files from before Share load with these defaults.
     [JsonPropertyName("share")] public ShareChoices Share { get; set; } = new();
+    // "auto" follows the system language; otherwise a code of Loc.Languages.
+    [JsonPropertyName("language")] public string Language { get; set; } = "auto";
 
     private const int RememberedClips = 300;
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };

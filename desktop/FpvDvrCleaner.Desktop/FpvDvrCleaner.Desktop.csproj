@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
-    <Version>0.7.2</Version>
+    <Version>0.8.0</Version>
     <Product>FPV DVR Cleaner</Product>
   </PropertyGroup>
 
@@ -31,5 +31,7 @@
   </ItemGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets/app.png" />
+    <!-- Translations of the user interface and engine messages, one file per language (see Loc.cs). -->
+    <EmbeddedResource Include="Locales/*.json" LogicalName="FpvDvrCleaner.Desktop.Locales.%(Filename).json" />
   </ItemGroup>
 </Project>

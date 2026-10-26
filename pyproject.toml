@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fpv-dvr-cleaner"
-version = "0.7.2"
+version = "0.8.0"
 description = "Video engine for restoring analog and HDZero FPV DVR recordings"
 readme = "README.md"
 requires-python = ">=3.10"

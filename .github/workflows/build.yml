@@ -298,3 +298,9 @@ jobs:
           body_path: release-notes.md
           files: release-assets/*
           make_latest: true
+      # Only the newest release keeps its notes open; older ones fold their "New in …"
+      # sections and downloads. Text only: tags, files and the latest mark stay.
+      - name: Fold the notes of older releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 tools/collapse_old_releases.py "${{ github.ref_name }}" || echo "::warning title=Release notes::the notes of older releases could not be folded"

@@ -415,7 +415,7 @@ public sealed class TimelineView : Control
     {
         if (_thumbnails.Count == 0)
         {
-            context.DrawText(Text("Building the filmstrip…", 12, LabelBrush), new Point(12, VideoTop + VideoHeight / 2 - 8));
+            context.DrawText(Text(UiText.BuildingStrip, 12, LabelBrush), new Point(12, VideoTop + VideoHeight / 2 - 8));
             return;
         }
         var pps = PixelsPerSecond;
@@ -446,12 +446,12 @@ public sealed class TimelineView : Control
     {
         if (!_hasAudio)
         {
-            context.DrawText(Text("No audio track", 11, LabelBrush), new Point(12, AudioTop + AudioHeight / 2 - 7));
+            context.DrawText(Text(UiText.NoAudio, 11, LabelBrush), new Point(12, AudioTop + AudioHeight / 2 - 7));
             return;
         }
         if (_waveform == null || _waveform.Length == 0)
         {
-            context.DrawText(Text("Reading audio…", 11, LabelBrush), new Point(12, AudioTop + AudioHeight / 2 - 7));
+            context.DrawText(Text(UiText.ReadingAudio, 11, LabelBrush), new Point(12, AudioTop + AudioHeight / 2 - 7));
             return;
         }
         var middle = AudioTop + AudioHeight / 2;

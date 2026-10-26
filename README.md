@@ -1,12 +1,3 @@
-> [!IMPORTANT]
-> ### Want to stay up to date? Download the launcher.
-> **The launcher always gets you the newest FPV DVR Cleaner.** Pick your system, and it downloads the latest release into its own folder (or a folder you choose), checks it, deletes the old version and starts the app.
->
-> **[⬇ Launcher for Windows](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-windows-x64.exe)**&ensp;·&ensp;**[macOS Apple Silicon](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-macos-apple-silicon.zip)**&ensp;·&ensp;**[macOS Intel](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-macos-intel.zip)**&ensp;·&ensp;**[Linux](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-linux-x64.tar.gz)**
->
-> <p align="center"><img src="docs/media/launcher.png" width="620" alt="The FPV DVR Cleaner launcher: Windows, macOS and Linux to choose from, the install folder, and an Install and open button"></p>
-
-
 <div align="center">
 
 <img src="docs/media/logo.svg" width="260" alt="FPV DVR Cleaner logo: an analog TV with a noisy picture and a small FPV quad hovering beside it">
@@ -15,7 +6,8 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-A64600)](LICENSE)
 [![Open source](https://img.shields.io/badge/open%20source-100%25-2ea44f)](https://github.com/Bratwurstexe/FPV_DVR_CLEANER)
-[![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-5f676d)](#getting-started)
+[![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-5f676d)](#download)
+[![Languages](https://img.shields.io/badge/languages-15-A64600)](#in-your-language)
 [![.NET 8](https://img.shields.io/badge/.NET-8-512BD4)](https://dotnet.microsoft.com)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB)](https://www.python.org)
 [![Stars](https://img.shields.io/github/stars/Bratwurstexe/FPV_DVR_CLEANER?style=flat&color=A64600)](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/stargazers)
@@ -27,9 +19,11 @@ Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, 
 
 <h2><a href="https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest">⬇ Download for Windows, macOS and Linux</a><br><sub>Ready to run, no Python or FFmpeg setup.</sub></h2>
 
+**[⬇ Launcher for Windows](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-windows-x64.exe)** · **[macOS Apple Silicon](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-macos-apple-silicon.zip)** · **[macOS Intel](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-macos-intel.zip)** · **[Linux](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-linux-x64.tar.gz)**<br><sub>The launcher installs the newest version and keeps it up to date.</sub>
+
 <hr>
 
-<p align="center"><a href="#features"><b>Features</b></a>&ensp;·&ensp;<a href="#before-and-after"><b>Before / after</b></a>&ensp;·&ensp;<a href="#speed"><b>Speed</b></a>&ensp;·&ensp;<a href="#how-it-works"><b>How it works</b></a>&ensp;·&ensp;<a href="#the-workflow"><b>Workflow</b></a>&ensp;·&ensp;<a href="#getting-started"><b>Getting started</b></a>&ensp;·&ensp;<a href="#coming-soon"><b>Coming soon</b></a>&ensp;·&ensp;<a href="#licence"><b>Licence</b></a></p>
+<p align="center"><a href="#what-it-does"><b>What it does</b></a>&ensp;·&ensp;<a href="#before-and-after"><b>Before / after</b></a>&ensp;·&ensp;<a href="#the-workflow"><b>Workflow</b></a>&ensp;·&ensp;<a href="#download"><b>Download</b></a>&ensp;·&ensp;<a href="#technical-details"><b>Technical details</b></a>&ensp;·&ensp;<a href="#licence"><b>Licence</b></a></p>
 
 <hr>
 
@@ -37,31 +31,16 @@ Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, 
 
 </div>
 
----
+## What it does
 
-## Features
-
-- **Rainbow stripes removed.** Hue tears from a disturbed colour carrier are detected in each frame and replaced with colour from neighbouring frames.
-- **Black-and-white dropouts filled.** Frames or row bands where the receiver lost colour get their colour back; the brightness is never touched.
-- **HDZero breakups rebuilt.** Frames or parts of frames that turn into coloured confetti when the digital link drops packets are rebuilt from the clean frames around them, even when the whole frame is lost.
-- **Noise reduction and streak repair.** Five motion-aligned frames are fused around a robust median. Grain calms down, bright or dark streaks disappear, and moving edges stay sharp.
-- **OSD removal.** Text, icons and bars that stay in place while the picture moves are found, including warnings that appear only briefly. They are refilled from frames where the scene behind them is visible. Screens that are shown only part of the time, such as the stats after landing, are removed only while they are on screen. If the search misses something, such as a small icon or *REC*, **Fix by hand** opens a mask editor: paint it in (or keep what was taken by mistake), and the correction is used in every frame of that recording.
-- **Multi-frame upscaling.** 1.5× (720p to 1080p) or 2×. Neighbouring frames add detail instead of just enlarging a single frame.
-- **A finished look, if you want one.** Switch on a look to give the cleaned footage a final touch: colour grade, glow, vignette, film grain and lens fringe, each with its own slider, or one of the presets *Clean*, *Cinematic*, *Punchy* and *Retro FPV*. It is off by default and then changes nothing. The frame preview shows it, and a second split compares the frame with and without it.
-- **Timeline trim editor.** Cut a recording into parts and remove the ones you don't want, like in a video editor: split at the playhead, click a part, press Delete, and the rest closes up with a visible cut edge. Drag the edges to trim, snap to cuts and bookmarks, hover to scrub, Ctrl+wheel to zoom, undo and redo. The audio track is shown as a waveform, and playback decodes the real video, so it runs smoothly.
-- **Two simple questions.** Pick the signal (Analog or HDZero) and answer *How bad is it?* with Light, Normal or Strong; *Best quality* adds 1080p in one switch. Every slider is still there under *Advanced*, each with a *Show* button that renders the frame without and with only that repair.
-- **Check before you export.** The frame at the playhead runs through the whole chain and updates on its own after a change; drag the split line across the picture to compare original and result.
-- **Watch the result live.** After the export, original and cleaned clip play side by side (or under a wipe you drag in the picture), frame-accurate to each other, with removed parts skipped. A measurement tells you how much was gained, how much is still possible without any loss, and what a second pass would cost. *Auto refine* picks the settings from that measurement and exports again with one click.
-- **Share:** the cleaned clip as a ready video for YouTube or for Shorts, Reels and TikTok. 16:9 puts the picture in the middle of a black 1080p frame (720p for SD recordings); 9:16 fills the phone screen and pans smoothly along with the action. The whole clip as you trimmed it, H.264 MP4, with or without its sound.
-- **Export by purpose.** Say what the video is for: *Share & play anywhere* (MP4 with H.264), *Smallest file* (MP4 with H.265), *For video editing* (MOV with ProRes 422) or *For the web* (WebM with VP9 and Opus). MKV, quality and size limit are under *More options*. The choice is remembered.
-- **Batch export.** Every clip keeps its own cut. The remaining time is shown live, you can cancel at any moment, and the original audio is kept. Clips can be joined into one video, the file name suffix is yours to choose, and the folder opens when it's done.
-- **Presets and memory.** Save your settings as presets of your own, then rename, update or delete them. The last settings, the export folder, the cut of every recording and its OSD corrections come back the next time you start the app.
-- **CPU and GPU together.** Frames are repaired in parallel on every core, the full-resolution work of noise reduction and upscaling runs on the graphics card, black side bars are skipped, and a *Fast / Balanced / Best* setting trades time for quality. Without a usable GPU everything runs on the CPU with the same result. See [Speed](#speed).
-- **Optional local training.** A small self-supervised model can learn your receiver's pixel statistics from your own footage.
-- **One screen, one focus.** Every page fits the window without scrolling, the trim editor is a dark workspace with the preview as large as the window allows, and while the engine works on a frame the page blurs behind a single progress card; an export shows its progress right under the Export button.
-- **Private.** No account, no upload, no telemetry. Everything runs locally.
-
-Restoring VHS tapes or old 8 mm / 16 mm film? That lives in the sister project [Analog Repair](https://github.com/Bratwurstexe/ANALOG_REPAIR).
+- 🌈 **Rainbow stripes, colour noise and dropouts** of analog recordings repaired from neighbouring frames
+- 🧩 **HDZero breakups** (coloured confetti) rebuilt, even when the whole frame is lost
+- 🔤 **OSD removed** on request, with a brush to fix what the search missed
+- 🔍 **Upscaled to 1080p** with detail from neighbouring frames, noise calmed, edges kept sharp
+- ✂️ **Trim like in a video editor**, check every repair on a real frame, export by purpose (YouTube, small file, editing, web)
+- 📱 **Share** as a ready 16:9 video for YouTube or 9:16 for Shorts, Reels and TikTok
+- 🌍 **In your language:** English, Deutsch, Français, Español, Italiano, Português (Brasil), Nederlands, Polski, Čeština, Русский, Українська, Türkçe, 日本語, 简体中文 and 한국어
+- 🔒 **Private and free:** runs on your own computer, uses CPU and graphics card together, no account, no upload
 
 ## Before and after
 
@@ -91,7 +70,81 @@ Two frames from an HDZero recording in which the link dropped out: half the fram
 | **OSD removal** | **1.5x upscaling (detail)** |
 | ![OSD removed](docs/media/osd-removal.gif) | ![Upscaling detail](docs/media/upscaling.gif) |
 
-## Speed
+## The workflow
+
+| 1 · Import | 2 · Trim |
+|---|---|
+| ![Import](docs/media/ui-import.png) | ![Trim](docs/media/ui-trim.png) |
+| **3 · Repair** | **4 · Export** |
+| ![Repair](docs/media/ui-repair.png) | ![Export](docs/media/ui-export.png) |
+
+1. **Import:** drop recordings onto the window or add a folder.
+2. **Trim:** split the recording at the playhead (`S`), click the parts you don't want and press `Delete`; the kept parts close up. Drag the `[` `]` edges to fine-tune, set bookmarks with `B`, play through the kept parts with `Space`.
+3. **Repair:** choose Analog or HDZero and how bad the recording is, switch on *Best quality* for 1080p, keep or remove the OSD (and fix its mask by hand if needed) and, if you like, add a look. The frame on the right shows the result; *Advanced* holds every slider, output size and speed. Save settings you like under *My presets*.
+4. **Export:** check the folder (a *Cleaned* folder next to your clips unless you choose another), pick what the video is for and press *Export*. The remaining time is shown live, and you can cancel at any moment. Afterwards, play original and result side by side, read the gain and headroom estimate, and press *Auto refine* to export again with settings chosen from it, or refine the cleaned file in a second pass.
+5. **Share:** press *Share* in the result view, pick 16:9 (YouTube) or 9:16 (Shorts, Reels, TikTok), switch the sound on or off and press *Make video*. The video is saved next to the cleaned file as `…-youtube.mp4` or `…-short.mp4`.
+
+### In your language
+
+The app speaks 15 languages and follows the language of your system; English is used when yours is not among them. Change it at any time with the menu at the bottom of the step rail: the app restarts in the new language and keeps your clips.
+
+## Download
+
+> [!IMPORTANT]
+> **The launcher always gets you the newest FPV DVR Cleaner.** Pick your system, and it downloads the latest release into its own folder (or a folder you choose), checks it, deletes the old version and starts the app.
+>
+> **[⬇ Launcher for Windows](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-windows-x64.exe)**&ensp;·&ensp;**[macOS Apple Silicon](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-macos-apple-silicon.zip)**&ensp;·&ensp;**[macOS Intel](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-macos-intel.zip)**&ensp;·&ensp;**[Linux](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-linux-x64.tar.gz)**
+>
+> <p align="center"><img src="docs/media/launcher.png" width="620" alt="The FPV DVR Cleaner launcher: Windows, macOS and Linux to choose from, the install folder, and an Install and open button"></p>
+
+**Easiest: the launcher.** Download the launcher for your system (links above), put it in a folder of your choice and start it. Your system is detected and preselected, but you can pick another one. It downloads the newest release, verifies its SHA-256 checksum, unpacks it next to itself, removes the old version and starts the app. Start it again whenever you like: it updates only when there is something new. You can choose another install folder at any time; the choice is remembered.
+
+Or get the package for your system from the **[latest release](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest)** yourself. It contains the app, the video engine and FFmpeg. Unpack it and start it; nothing else has to be installed.
+
+| System | File | Start |
+|---|---|---|
+| Windows 10/11 (64-bit) | `FPV-DVR-Cleaner-…-windows-x64.zip` | `FpvDvrCleaner.Desktop.exe` |
+| macOS, Apple Silicon | `FPV-DVR-Cleaner-…-macos-apple-silicon.zip` | `FPV DVR Cleaner.app` |
+| macOS, Intel | `FPV-DVR-Cleaner-…-macos-intel.zip` | `FPV DVR Cleaner.app` |
+| Linux (x64) | `FPV-DVR-Cleaner-…-linux-x64.AppImage` | `chmod +x` the file, then start it |
+| Linux (x64), plain folder | `FPV-DVR-Cleaner-…-linux-x64.tar.gz` | `./FpvDvrCleaner.Desktop` |
+
+On Windows, SmartScreen may warn about an unknown publisher: choose *More info → Run anyway*. On macOS the app is not notarised: right-click it and choose *Open* the first time. The launcher gets the same one-time questions (on macOS: right-click *FPV DVR Cleaner Launcher.app* → *Open*; on Linux: unpack it and start `FPV-DVR-Cleaner-Launcher`); the app it installs then starts without them. On Linux the app needs an X11 or XWayland session (Wayland compositors such as Hyprland or Sway run it through XWayland).
+
+The export folder you choose is remembered between runs. Settings and trained models are kept in `FPV DVR Cleaner` under your user's local application data folder (`%LOCALAPPDATA%` on Windows, `~/.local/share` on Linux, `~/.local/share` or `~/Library/Application Support` on macOS).
+
+## Technical details
+
+<details>
+<summary><b>All features in detail</b></summary>
+
+- **Rainbow stripes removed.** Hue tears from a disturbed colour carrier are detected in each frame and replaced with colour from neighbouring frames.
+- **Black-and-white dropouts filled.** Frames or row bands where the receiver lost colour get their colour back; the brightness is never touched.
+- **HDZero breakups rebuilt.** Frames or parts of frames that turn into coloured confetti when the digital link drops packets are rebuilt from the clean frames around them, even when the whole frame is lost.
+- **Noise reduction and streak repair.** Five motion-aligned frames are fused around a robust median. Grain calms down, bright or dark streaks disappear, and moving edges stay sharp.
+- **OSD removal.** Text, icons and bars that stay in place while the picture moves are found, including warnings that appear only briefly. They are refilled from frames where the scene behind them is visible. Screens that are shown only part of the time, such as the stats after landing, are removed only while they are on screen. If the search misses something, such as a small icon or *REC*, **Fix by hand** opens a mask editor: paint it in (or keep what was taken by mistake), and the correction is used in every frame of that recording.
+- **Multi-frame upscaling.** 1.5× (720p to 1080p) or 2×. Neighbouring frames add detail instead of just enlarging a single frame.
+- **A finished look, if you want one.** Switch on a look to give the cleaned footage a final touch: colour grade, glow, vignette, film grain and lens fringe, each with its own slider, or one of the presets *Clean*, *Cinematic*, *Punchy* and *Retro FPV*. It is off by default and then changes nothing. The frame preview shows it, and a second split compares the frame with and without it.
+- **Timeline trim editor.** Cut a recording into parts and remove the ones you don't want, like in a video editor: split at the playhead, click a part, press Delete, and the rest closes up with a visible cut edge. Drag the edges to trim, snap to cuts and bookmarks, hover to scrub, Ctrl+wheel to zoom, undo and redo. The audio track is shown as a waveform, and playback decodes the real video, so it runs smoothly.
+- **Two simple questions.** Pick the signal (Analog or HDZero) and answer *How bad is it?* with Light, Normal or Strong; *Best quality* adds 1080p in one switch. Every slider is still there under *Advanced*, each with a *Show* button that renders the frame without and with only that repair.
+- **Check before you export.** The frame at the playhead runs through the whole chain and updates on its own after a change; drag the split line across the picture to compare original and result.
+- **Watch the result live.** After the export, original and cleaned clip play side by side (or under a wipe you drag in the picture), frame-accurate to each other, with removed parts skipped. A measurement tells you how much was gained, how much is still possible without any loss, and what a second pass would cost. *Auto refine* picks the settings from that measurement and exports again with one click.
+- **Share:** the cleaned clip as a ready video for YouTube or for Shorts, Reels and TikTok. 16:9 puts the picture in the middle of a black 1080p frame (720p for SD recordings); 9:16 fills the phone screen and pans smoothly along with the action. The whole clip as you trimmed it, H.264 MP4, with or without its sound.
+- **Export by purpose.** Say what the video is for: *Share & play anywhere* (MP4 with H.264), *Smallest file* (MP4 with H.265), *For video editing* (MOV with ProRes 422) or *For the web* (WebM with VP9 and Opus). MKV, quality and size limit are under *More options*. The choice is remembered.
+- **Batch export.** Every clip keeps its own cut. The remaining time is shown live, you can cancel at any moment, and the original audio is kept. Clips can be joined into one video, the file name suffix is yours to choose, and the folder opens when it's done.
+- **Presets and memory.** Save your settings as presets of your own, then rename, update or delete them. The last settings, the export folder, the cut of every recording and its OSD corrections come back the next time you start the app.
+- **CPU and GPU together.** Frames are repaired in parallel on every core, the full-resolution work of noise reduction and upscaling runs on the graphics card, black side bars are skipped, and a *Fast / Balanced / Best* setting trades time for quality. Without a usable GPU everything runs on the CPU with the same result. See *Speed* under the technical details.
+- **Optional local training.** A small self-supervised model can learn your receiver's pixel statistics from your own footage.
+- **One screen, one focus.** Every page fits the window without scrolling, the trim editor is a dark workspace with the preview as large as the window allows, and while the engine works on a frame the page blurs behind a single progress card; an export shows its progress right under the Export button.
+- **In 15 languages.** The app follows the language of your system (English when yours is not supported) and can be switched at the bottom of the step rail; error messages of the video engine are translated too.
+- **Private.** No account, no upload, no telemetry. Everything runs locally.
+
+Restoring VHS tapes or old 8 mm / 16 mm film? That lives in the sister project [Analog Repair](https://github.com/Bratwurstexe/ANALOG_REPAIR).
+
+</details>
+
+<details>
+<summary><b>Speed</b></summary>
 
 How long an export takes, in minutes of processing for one minute of footage. Pick the speed on the *Repair* page: **Fast** for a quick look at a flight, **Balanced** (default) for most exports, **Best** for the final cut.
 
@@ -107,7 +160,10 @@ Measured with 0.5.0 on 20 seconds of a real 720p60 analog recording (4:3 picture
 
 **Your speed will differ.** It depends on your processor and graphics card: processors with more cores finish sooner, laptops are held back by their power limit, and without a usable GPU everything runs on the CPU as in the last column. Recordings at 90 or 180 fps take proportionally longer, because every frame is repaired. To measure your own machine, run [tools/benchmark.py](tools/benchmark.py) on one of your recordings and draw the chart with [tools/make_speed_chart.py](tools/make_speed_chart.py).
 
-## How it works
+</details>
+
+<details>
+<summary><b>How it works</b></summary>
 
 ![Processing pipeline](docs/media/pipeline.svg)
 
@@ -115,7 +171,7 @@ The desktop app (.NET 8, Avalonia) is the front end: import, trimming, settings,
 
 Each stage streams frames and looks at a short window of neighbours around the current frame:
 
-### 1 · Analog colour repair
+#### 1 · Analog colour repair
 
 ![Colour repair principle](docs/media/colour-repair.svg)
 
@@ -127,7 +183,7 @@ A weak analog signal damages colour far more than brightness, and the damage cha
 - **Lasting bands:** a stripe that returns at the same place in several frames is caught by its edges: a colour edge without a matching brightness edge. There the colour is refilled from a local brightness-to-colour model.
 - **Settle:** finally the colour is smoothed with a filter guided by the brightness, so it follows the contours that survived the transmission instead of speckling.
 
-### 2 · HDZero breakup repair and optional model
+#### 2 · HDZero breakup repair and optional model
 
 You can add a small network trained on your own recordings (*Model training*).
 
@@ -144,14 +200,14 @@ Slowed down, frame by frame: original, detected blocks, result.
 
 ![Original, detected blocks and repaired result, slowed down](docs/media/hdzero.gif)
 
-### 3 · OSD removal
+#### 3 · OSD removal
 
 - **Finding overlays:** at the edge of a drawn overlay, the brightness gradient points the same way in every frame. At scene edges it points in all directions as the drone moves. Comparing summed gradient *vectors* with summed gradient *lengths* per colour channel marks edges that hold still. These edges are grouped into text lines and shapes, and closed outlines such as bars are filled.
 - **Brief overlays:** a sliding window applies the same test to warnings that appear only for a moment, but only while the scene is moving. A straight scene edge that slides along itself also keeps its direction, so only flat, level rows full of upright strokes count: lines of text such as *LOW BATTERY*.
 - **Only while shown:** the clip-wide search also finds screens that are visible only part of the time, such as the stats after landing. For each element the edges that held still are remembered with their direction; a frame shows the element when enough of them are found there again. Changing digits have no steady edges, so the icon, point and unit decide. An element stays removed a moment longer after it was last seen, so blinking warnings do not flicker.
 - **Removal:** each region is filled from the neighbouring frame whose aligned content fits the region's rim best, with its brightness offset corrected. Motion is chained frame by frame, so even frames far apart line up. Where no frame shows the background, the region is inpainted.
 
-### 4 · Multi-frame fusion: noise reduction and upscaling
+#### 4 · Multi-frame fusion: noise reduction and upscaling
 
 The current frame and two frames on each side are aligned onto the same grid. If upscaling is on, they are enlarged with Lanczos first.
 
@@ -163,55 +219,26 @@ The current frame and two frames on each side are aligned onto the same grid. If
 
 The output is H.264 MP4 with the original audio unless you pick another format on the Export page: H.265 MP4, ProRes 422 MOV (with uncompressed sound), H.264 MKV or VP9 WebM (with Opus sound). Results are written to a temporary file and only renamed when the export succeeds.
 
-### 5 · How it stays fast
+#### 5 · How it stays fast
 
 - **Every core works.** Each stage builds a frame only from its input neighbours, never from its own earlier output, so frames are processed side by side on a shared thread pool while the order is kept.
 - **The graphics card takes the heavy part.** In noise reduction and upscaling, optical flow is measured on small frames on the CPU threads; warping the neighbours, the median and the weighting at full resolution run on the GPU through OpenCL, which NVIDIA, AMD, Intel and Apple drivers provide. Only two frames at a time go to the GPU, more would only queue up there, while the other threads keep the processor busy with flow, colour repair and OSD removal. At start a short self-test compares the GPU with the CPU; if it fails, or no GPU is found, the CPU does everything. The result is the same either way, to within one grey level. `FLUGBILD_GPU=0` turns the GPU off.
 - **Only the picture.** Goggles record the 4:3 picture inside a 16:9 file. The black side bars are found once per cut, skipped by every stage and added back as clean black: about a quarter less work.
 - **Fast / Balanced / Best** sets how many neighbouring frames are used, how finely motion is followed and how fast the encoder runs. *Best* is the full-quality setting; *Balanced* is close to it in clearly less time.
 
-## The workflow
+</details>
 
-| 1 · Import | 2 · Trim |
-|---|---|
-| ![Import](docs/media/ui-import.png) | ![Trim](docs/media/ui-trim.png) |
-| **3 · Repair** | **4 · Export** |
-| ![Repair](docs/media/ui-repair.png) | ![Export](docs/media/ui-export.png) |
+<details>
+<summary><b>Run from source and Visual Studio Code</b></summary>
 
-1. **Import:** drop recordings onto the window or add a folder.
-2. **Trim:** split the recording at the playhead (`S`), click the parts you don't want and press `Delete`; the kept parts close up. Drag the `[` `]` edges to fine-tune, set bookmarks with `B`, play through the kept parts with `Space`.
-3. **Repair:** choose Analog or HDZero and how bad the recording is, switch on *Best quality* for 1080p, keep or remove the OSD (and fix its mask by hand if needed) and, if you like, add a look. The frame on the right shows the result; *Advanced* holds every slider, output size and speed. Save settings you like under *My presets*.
-4. **Export:** check the folder (a *Cleaned* folder next to your clips unless you choose another), pick what the video is for and press *Export*. The remaining time is shown live, and you can cancel at any moment. Afterwards, play original and result side by side, read the gain and headroom estimate, and press *Auto refine* to export again with settings chosen from it, or refine the cleaned file in a second pass.
-5. **Share:** press *Share* in the result view, pick 16:9 (YouTube) or 9:16 (Shorts, Reels, TikTok), switch the sound on or off and press *Make video*. The video is saved next to the cleaned file as `…-youtube.mp4` or `…-short.mp4`.
-
-## Getting started
-
-### Download
-
-**Easiest: the launcher.** Download the launcher for your system (links at the [top of this page](#fpv-dvr-cleaner)), put it in a folder of your choice and start it. Your system is detected and preselected, but you can pick another one. It downloads the newest release, verifies its SHA-256 checksum, unpacks it next to itself, removes the old version and starts the app. Start it again whenever you like: it updates only when there is something new. You can choose another install folder at any time; the choice is remembered.
-
-Or get the package for your system from the **[latest release](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest)** yourself. It contains the app, the video engine and FFmpeg. Unpack it and start it; nothing else has to be installed.
-
-| System | File | Start |
-|---|---|---|
-| Windows 10/11 (64-bit) | `FPV-DVR-Cleaner-…-windows-x64.zip` | `FpvDvrCleaner.Desktop.exe` |
-| macOS, Apple Silicon | `FPV-DVR-Cleaner-…-macos-apple-silicon.zip` | `FPV DVR Cleaner.app` |
-| macOS, Intel | `FPV-DVR-Cleaner-…-macos-intel.zip` | `FPV DVR Cleaner.app` |
-| Linux (x64) | `FPV-DVR-Cleaner-…-linux-x64.AppImage` | `chmod +x` the file, then start it |
-| Linux (x64), plain folder | `FPV-DVR-Cleaner-…-linux-x64.tar.gz` | `./FpvDvrCleaner.Desktop` |
-
-On Windows, SmartScreen may warn about an unknown publisher: choose *More info → Run anyway*. On macOS the app is not notarised: right-click it and choose *Open* the first time. The launcher gets the same one-time questions (on macOS: right-click *FPV DVR Cleaner Launcher.app* → *Open*; on Linux: unpack it and start `FPV-DVR-Cleaner-Launcher`); the app it installs then starts without them. On Linux the app needs an X11 or XWayland session (Wayland compositors such as Hyprland or Sway run it through XWayland).
-
-The export folder you choose is remembered between runs. Settings and trained models are kept in `FPV DVR Cleaner` under your user's local application data folder (`%LOCALAPPDATA%` on Windows, `~/.local/share` on Linux, `~/.local/share` or `~/Library/Application Support` on macOS).
-
-### Requirements (run from source)
+#### Requirements
 
 - Windows 10/11, Linux or macOS
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (to build the app)
 - Python 3.10 or newer with `pip install numpy opencv-python-headless`
 - [FFmpeg](https://ffmpeg.org/download.html) and `ffprobe` on your `PATH`
 
-### Run from source
+#### Run from source
 
 ```powershell
 git clone https://github.com/Bratwurstexe/FPV_DVR_CLEANER.git
@@ -220,7 +247,7 @@ python -m pip install -e .
 dotnet run --project desktop/FpvDvrCleaner.Desktop
 ```
 
-### Visual Studio Code
+#### Visual Studio Code
 
 Open the folder in VS Code and install the recommended extensions (C# Dev Kit, Python).
 
@@ -235,7 +262,10 @@ Open the folder in VS Code and install the recommended extensions (C# Dev Kit, P
 
 The [build workflow](.github/workflows/build.yml) produces packages for Windows, Linux and macOS from a version tag.
 
-## Coming soon
+</details>
+
+<details>
+<summary><b>Coming soon</b></summary>
 
 - [ ] **AI HD upscaling:** a neural super-resolution model trained for FPV footage, as an option next to multi-frame upscaling
 - [ ] GPU acceleration for faster exports
@@ -243,15 +273,20 @@ The [build workflow](.github/workflows/build.yml) produces packages for Windows,
 - [ ] Better HDZero repair for long breakups across several frames
 - [x] Presets for repair settings
 - [ ] Automatic detection of take-off and landing as a trim suggestion
-- [ ] German user interface
+- [x] User interface in 15 languages
 
 Ideas and bug reports are welcome in the [issues](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/issues).
 
-## Limitations
+</details>
 
-- Frame-by-frame cleaning is CPU-bound. With all options enabled, expect a few minutes of processing per minute of footage (see [Speed](#speed)); on laptops the power limit sets the pace.
+<details>
+<summary><b>Limitations</b></summary>
+
+- Frame-by-frame cleaning is CPU-bound. With all options enabled, expect a few minutes of processing per minute of footage (see *Speed* below); on laptops the power limit sets the pace.
 - Picture content that is missing in *every* nearby frame cannot be recovered. Long breakups and torn brightness stay visible.
 - OSD removal needs camera movement. In a hover, the area behind the OSD may never be visible and is inpainted instead.
+
+</details>
 
 ## Licence
 
@@ -268,7 +303,7 @@ The application code is released under the [MIT licence](LICENSE). It uses open-
 - blendet auf Wunsch das OSD aus
 - skaliert auf 1080p hoch
 
-Alles läuft lokal auf deinem Rechner. Der Ablauf hat vier Schritte: **Import → Schneiden (Filmstreifen-Zeitleiste) → Reparieren (mit Vorschau) → Export (mit Restzeit, abbrechbar)**.
+Alles läuft lokal auf deinem Rechner. Die Oberfläche gibt es auf Deutsch und in 14 weiteren Sprachen; sie folgt automatisch der Systemsprache und lässt sich unten links umstellen. Der Ablauf hat vier Schritte: **Import → Schneiden (Filmstreifen-Zeitleiste) → Reparieren (mit Vorschau) → Export (mit Restzeit, abbrechbar)**.
 
 Voraussetzungen: .NET 8, Python 3.10+ mit `numpy` und `opencv-python-headless`, FFmpeg.
 

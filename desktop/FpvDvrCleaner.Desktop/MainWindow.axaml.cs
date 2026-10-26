@@ -84,20 +84,20 @@ public partial class MainWindow : Window
     /// <summary>Output formats of the Export page: engine name, file extension, label and one-line hint.</summary>
     private static readonly (string Id, string Extension, string Title, string Hint)[] Formats =
     [
-        ("mp4-h264", ".mp4", "MP4 · H.264", "Plays everywhere"),
-        ("mp4-hevc", ".mp4", "MP4 · H.265 / HEVC", "Smallest files · newer players"),
-        ("mov-prores", ".mov", "MOV · ProRes 422", "For video editors · very large"),
-        ("mkv-h264", ".mkv", "MKV · H.264", "Robust container · plays in VLC and most players"),
-        ("webm-vp9", ".webm", "WebM · VP9 + Opus", "For the web · slow to encode"),
+        ("mp4-h264", ".mp4", "MP4 · H.264", UiText.FormatHintH264),
+        ("mp4-hevc", ".mp4", "MP4 · H.265 / HEVC", UiText.FormatHintHevc),
+        ("mov-prores", ".mov", "MOV · ProRes 422", UiText.FormatHintProres),
+        ("mkv-h264", ".mkv", "MKV · H.264", UiText.FormatHintMkv),
+        ("webm-vp9", ".webm", "WebM · VP9 + Opus", UiText.FormatHintWebm),
     ];
-    private static readonly string[] Titles = ["Import", "Trim", "Repair", "Export", "Model training"];
+    private static readonly string[] Titles = [UiText.TitleImport, UiText.TitleTrim, UiText.TitleRepair, UiText.TitleExport, UiText.TitleTraining];
     private static readonly string[] Subtitles =
     [
-        "Bring in your DVR recordings.",
-        "Keep only the part of each clip you want.",
-        "Choose the repairs and check them on a real frame.",
-        "Render every clip in the queue.",
-        "Optional: learn from your own footage.",
+        UiText.SubtitleImport,
+        UiText.SubtitleTrim,
+        UiText.SubtitleRepair,
+        UiText.SubtitleExport,
+        UiText.SubtitleTraining,
     ];
 
     public MainWindow()
@@ -128,6 +128,7 @@ public partial class MainWindow : Window
         Opened += async (_, _) =>
         {
             RestoreSettings();
+            FillLanguageChoices();
             SetUpRepairPage();
             RefreshModelChoices(); RefreshResumeChoices(); ShowPage(0); UpdateCompare();
             // Files passed on the command line ("Open with", dropped on the exe) join the queue.
@@ -173,7 +174,7 @@ public partial class MainWindow : Window
     private void BusyCancel_Click(object? sender, RoutedEventArgs e)
     {
         BusyCancel.IsEnabled = false;
-        BusyText.Text = "Canceling…";
+        BusyText.Text = UiText.Canceling;
         _busyCancel?.Invoke();
     }
 
@@ -212,6 +213,43 @@ public partial class MainWindow : Window
         _settings.LastPreset = _basePreset is { } basis ? PresetKey(basis) : null;
         foreach (var clip in _queue) _settings.RememberCut(clip.Path, clip.Segments, clip.Bookmarks, clip.ManualMask);
         _settings.Save();
+    }
+
+    // ---- language
+
+    private bool _fillingLanguages;
+
+    /// <summary>"System language (…)" first, then every language in its own name.</summary>
+    private void FillLanguageChoices()
+    {
+        _fillingLanguages = true;
+        LanguageChoice.Items.Clear();
+        var system = Loc.Languages.First(language => language.Code == Loc.Detect(CultureInfo.CurrentUICulture));
+        LanguageChoice.Items.Add(new ComboBoxItem { Content = UiText.F(UiText.LanguageAuto, system.Name), Tag = "auto" });
+        foreach (var language in Loc.Languages)
+            LanguageChoice.Items.Add(new ComboBoxItem { Content = language.Name, Tag = language.Code });
+        LanguageChoice.SelectedItem = LanguageChoice.Items.OfType<ComboBoxItem>().FirstOrDefault(item => Equals(item.Tag, _settings.Language))
+                                      ?? LanguageChoice.Items[0];
+        _fillingLanguages = false;
+    }
+
+    /// <summary>Every text is read once at start, so a new language restarts the app with the clips of the queue.</summary>
+    private void Language_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_fillingLanguages || LanguageChoice.SelectedItem is not ComboBoxItem { Tag: string code } || code == _settings.Language) return;
+        _settings.Language = code;
+        RememberSettings();
+        if (_exportCancel != null || _trainingCancel != null)
+        {
+            LanguageNote.Text = UiText.LanguageWaitBusy;
+            LanguageNote.IsVisible = true;
+            return;
+        }
+        if (Environment.ProcessPath is not { } executable) return;
+        var restart = new ProcessStartInfo(executable) { UseShellExecute = false, WorkingDirectory = AppContext.BaseDirectory };
+        foreach (var path in _queue.Select(clip => clip.Path).Distinct()) restart.ArgumentList.Add(path);
+        try { Process.Start(restart); Close(); }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { }
     }
 
     private void ExportOption_Changed(object? sender, RoutedEventArgs e)
@@ -286,11 +324,11 @@ public partial class MainWindow : Window
         }
         FormatNote.Text = OutputFormat.Id switch
         {
-            "mp4-hevc" => "About half the size of H.264 at the same quality. Older computers, TVs and some editors cannot open it.",
-            "mov-prores" => "Keeps every detail for editing, so quality and size limit do not apply. Sound is stored uncompressed.",
-            "mkv-h264" => "The same picture as MP4 · H.264. A file that was cut off still plays up to the break.",
-            "webm-vp9" => "VP9 picture with Opus sound for websites. Encoding takes noticeably longer than H.264.",
-            _ => "H.264 picture with AAC sound: the safe choice for phones, sharing and every editor.",
+            "mp4-hevc" => UiText.FormatNoteHevc,
+            "mov-prores" => UiText.FormatNoteProres,
+            "mkv-h264" => UiText.FormatNoteMkv,
+            "webm-vp9" => UiText.FormatNoteWebm,
+            _ => UiText.FormatNoteH264,
         };
     }
 
@@ -313,7 +351,7 @@ public partial class MainWindow : Window
                 return current.FullName;
             current = current.Parent;
         }
-        throw new InvalidOperationException("Python video engine was not found next to this desktop build.");
+        throw new InvalidOperationException(UiText.EngineMissing);
     }
 
     private static string ModelFolder()
@@ -374,7 +412,7 @@ public partial class MainWindow : Window
         try
         {
             var start = EngineStart(ticket);
-            using var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start video engine");
+            using var process = Process.Start(start) ?? throw new InvalidOperationException(UiText.EngineNoStart);
             using var killOnCancel = cancellation.Register(() =>
             {
                 try { if (!process.HasExited) process.Kill(entireProcessTree: true); }
@@ -396,10 +434,10 @@ public partial class MainWindow : Window
             }
             await process.WaitForExitAsync(cancellation);
             if (process.ExitCode != 0 || fault != null)
-                throw new InvalidOperationException(fault ?? await errorTask);
+                throw new InvalidOperationException(Loc.Engine(fault ?? await errorTask));
             return result;
         }
-        finally { File.Delete(ticket); }
+        finally { DeleteTemp(ticket); }
     }
 
     private static Bitmap LoadBitmap(string path)
@@ -422,6 +460,14 @@ public partial class MainWindow : Window
 
     private static string TempFile(string stem, string extension = ".png") =>
         System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"fpv-{stem}-{Guid.NewGuid():N}{extension}");
+
+    /// <summary>Removes temporary files; one still held by a just-cancelled engine run stays behind in the temp folder instead of crashing the app.</summary>
+    private static void DeleteTemp(params string[] paths)
+    {
+        foreach (var path in paths)
+            try { File.Delete(path); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
 
     private static string Clock(double seconds)
     {
@@ -459,12 +505,12 @@ public partial class MainWindow : Window
         PageSubtitle.Text = Subtitles[index];
         BackButton.IsVisible = index is > 0 and < 4;
         NextButton.IsVisible = index < 3;
-        NextButton.Content = index switch { 0 => "Next: Trim →", 1 => "Next: Repair →", _ => "Next: Export →" };
+        NextButton.Content = index switch { 0 => UiText.NextTrim, 1 => UiText.NextRepair, _ => UiText.NextExport };
         FooterNote.Text = index switch
         {
-            0 => _queue.Count == 0 ? "Add at least one recording to continue." : "Select a clip, then trim it.",
-            1 => "Every clip keeps its own start and end.",
-            2 => "Settings apply to every clip in the queue.",
+            0 => _queue.Count == 0 ? UiText.FooterAddFirst : UiText.FooterSelectClip,
+            1 => UiText.FooterOwnCut,
+            2 => UiText.FooterAllClips,
             _ => "",
         };
         // Trim, Repair and Export fill the window exactly; their own parts scroll if they must.
@@ -485,7 +531,7 @@ public partial class MainWindow : Window
     private void Back_Step_Click(object? sender, RoutedEventArgs e) => ShowPage(Math.Max(0, _page - 1));
     private void Next_Step_Click(object? sender, RoutedEventArgs e)
     {
-        if (_page == 0 && _queue.Count == 0) { ImportStatus.Text = "Add at least one recording first."; return; }
+        if (_page == 0 && _queue.Count == 0) { ImportStatus.Text = UiText.ImportAddFirst; return; }
         ShowPage(Math.Min(3, _page + 1));
     }
 
@@ -506,7 +552,7 @@ public partial class MainWindow : Window
 
     private async void Add_Click(object? sender, RoutedEventArgs e)
     {
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { AllowMultiple = true, Title = "Add recordings" });
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { AllowMultiple = true, Title = UiText.HintImport });
         await AddFilesAsync(files.Select(file => file.TryGetLocalPath()).OfType<string>());
     }
 
@@ -520,13 +566,13 @@ public partial class MainWindow : Window
     {
         var added = 0;
         var list = paths.ToList();
-        if (list.Count > 0) ShowBusy("Reading recordings", "");
+        if (list.Count > 0) ShowBusy(UiText.ReadingRecordings, "");
         try
         {
         foreach (var path in list)
         {
             if (_queue.Any(clip => clip.Path.Equals(path, StringComparison.OrdinalIgnoreCase))) continue;
-            ImportStatus.Text = $"Reading {System.IO.Path.GetFileName(path)}…";
+            ImportStatus.Text = UiText.F(UiText.ReadingFile, System.IO.Path.GetFileName(path));
             UpdateBusy(null, ImportStatus.Text);
             try
             {
@@ -548,11 +594,11 @@ public partial class MainWindow : Window
                 _ = MeasureBoxAsync(clip);
                 added++;
             }
-            catch (Exception ex) { ImportStatus.Text = $"Skipped {System.IO.Path.GetFileName(path)}: {ex.Message}"; }
+            catch (Exception ex) { ImportStatus.Text = UiText.F(UiText.SkippedFile, System.IO.Path.GetFileName(path), Loc.Engine(ex.Message)); }
         }
         }
         finally { HideBusy(); }
-        if (added > 0) ImportStatus.Text = $"Added {added} clip{(added == 1 ? "" : "s")}.";
+        if (added > 0) ImportStatus.Text = (added == 1 ? UiText.AddedOne : UiText.F(UiText.AddedMany, added));
         DrawQueue();
         ShowOutputFolder();
         if (_selected == null && _queue.Count > 0) Select(_queue[0]);
@@ -563,8 +609,8 @@ public partial class MainWindow : Window
     {
         QueueList.Children.Clear();
         QueueEmpty.IsVisible = _queue.Count == 0;
-        CountLabel.Text = $"{_queue.Count} clip{(_queue.Count == 1 ? "" : "s")}";
-        ImportHint.Text = _queue.Count == 0 ? "Add recordings" : CountLabel.Text;
+        CountLabel.Text = (_queue.Count == 1 ? UiText.CountOne : UiText.F(UiText.CountMany, _queue.Count));
+        ImportHint.Text = _queue.Count == 0 ? UiText.HintImport : CountLabel.Text;
         foreach (var clip in _queue)
         {
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto,Auto,Auto"), Margin = new Thickness(0, 1),
@@ -593,20 +639,20 @@ public partial class MainWindow : Window
                 ToolTip.SetTip(button, tip);
                 return button;
             }
-            var up = Square("M1,7 L5,3 L9,7", "#20252B", false, "Move up");
+            var up = Square("M1,7 L5,3 L9,7", "#20252B", false, UiText.MoveUp);
             up.IsEnabled = index > 0;
             up.Margin = new Thickness(6, 0, 0, 0);
             up.Click += (_, _) => { _queue.RemoveAt(index); _queue.Insert(index - 1, clip); DrawQueue(); };
-            var down = Square("M1,3 L5,7 L9,3", "#20252B", false, "Move down");
+            var down = Square("M1,3 L5,7 L9,3", "#20252B", false, UiText.MoveDown);
             down.IsEnabled = index < _queue.Count - 1;
             down.Margin = new Thickness(4, 0, 0, 0);
             down.Click += (_, _) => { _queue.RemoveAt(index); _queue.Insert(index + 1, clip); DrawQueue(); };
-            var copy = new Button { Content = "Copy", Height = 30, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center };
-            ToolTip.SetTip(copy, "Add the same recording once more, with its own cut");
+            var copy = new Button { Content = UiText.CopyClip, Height = 30, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center };
+            ToolTip.SetTip(copy, UiText.CopyClipTip);
             copy.Click += (_, _) => { _queue.Insert(index + 1, clip.Copy()); DrawQueue(); };
-            var trim = new Button { Content = "Trim", Height = 30, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center };
+            var trim = new Button { Content = UiText.TitleTrim, Height = 30, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center };
             trim.Click += (_, _) => { Select(clip); ShowPage(1); };
-            var remove = Square("M1.5,1.5 L8.5,8.5 M8.5,1.5 L1.5,8.5", "#9C3F1F", false, "Remove from queue");
+            var remove = Square("M1.5,1.5 L8.5,8.5 M8.5,1.5 L1.5,8.5", "#9C3F1F", false, UiText.RemoveFromQueue);
             remove.Margin = new Thickness(4, 0, 0, 0);
             remove.Classes.Add("remove");
             remove.Click += (_, _) =>
@@ -674,18 +720,18 @@ public partial class MainWindow : Window
 
     private static string QueueSummary(FootageItem clip)
     {
-        var kept = clip.Segments.Count == 1 && clip.Kept >= clip.Duration - 0.05 ? "keeping everything"
-            : clip.Segments.Count == 1 ? $"keeping {Clock(clip.In)} – {Clock(clip.Out)}"
-            : $"keeping {Clock(clip.Kept)} in {clip.Segments.Count} parts";
-        return $"{Clock(clip.Duration)} long · {kept}";
+        var kept = clip.Segments.Count == 1 && clip.Kept >= clip.Duration - 0.05 ? UiText.KeepingEverything
+            : clip.Segments.Count == 1 ? UiText.F(UiText.KeepingRange, Clock(clip.In), Clock(clip.Out))
+            : UiText.F(UiText.KeepingParts, Clock(clip.Kept), clip.Segments.Count);
+        return UiText.F(UiText.ClipLong, Clock(clip.Duration), kept);
     }
 
     private void ClearSelection()
     {
         TrimPreview.Source = null;
         Timeline.Duration = 1; Timeline.SetSegments([]); Timeline.SetBookmarks([]); Timeline.SetThumbnails([]); Timeline.SetWaveform(null, false);
-        StripStatus.Text = "Choose a clip to build its filmstrip.";
-        TrimHint.Text = "Pick the part to keep";
+        StripStatus.Text = UiText.StripChoose;
+        TrimHint.Text = UiText.HintTrim;
     }
 
     private void ClipPicker_Changed(object? sender, SelectionChangedEventArgs e)
@@ -720,7 +766,7 @@ public partial class MainWindow : Window
     private async Task LoadStripAsync(FootageItem clip)
     {
         clip.StripRequested = true;
-        StripStatus.Text = "Building the filmstrip…";
+        StripStatus.Text = UiText.BuildingStrip;
         var folder = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"fpv-strip-{Guid.NewGuid():N}");
         try
         {
@@ -730,11 +776,11 @@ public partial class MainWindow : Window
             if (_selected == clip)
             {
                 Timeline.SetThumbnails(clip.Strip);
-                StripStatus.Text = $"{clip.Strip.Count} thumbnails · Ctrl+wheel zooms in for finer cuts.";
+                StripStatus.Text = UiText.F(UiText.StripReady, clip.Strip.Count);
                 ShowThumbnail(_head);
             }
         }
-        catch (Exception ex) { clip.StripRequested = false; StripStatus.Text = $"Filmstrip unavailable: {ex.Message}"; }
+        catch (Exception ex) { clip.StripRequested = false; StripStatus.Text = UiText.F(UiText.StripFailed, Loc.Engine(ex.Message)); }
         finally { try { Directory.Delete(folder, true); } catch (IOException) { } }
     }
 
@@ -758,9 +804,9 @@ public partial class MainWindow : Window
             if (_selected == null) return;
             UpdateCutFields();
             StripStatus.Text = index >= 0 && _selected.Segments.Count > 1
-                ? $"Part {index + 1} selected: Remove part (Delete) takes it out, drag its [ ] edges to trim it."
-                : index >= 0 ? "Split (S) at the playhead cuts the clip into parts; remove the parts you don't want."
-                : "This part was removed. Click a kept part to select it.";
+                ? UiText.F(UiText.TrimPartSelected, index + 1)
+                : index >= 0 ? UiText.TrimSplitHint
+                : UiText.TrimRemovedHint;
         };
         Timeline.EditStarted += PushUndo;
         Timeline.SegmentsChanged += () =>
@@ -814,7 +860,7 @@ public partial class MainWindow : Window
         if (_selected == null) return;
         Timeline.Head = _head;
         PlayheadLabel.Text = Clock(_head);
-        TrimHint.Text = _selected.Segments.Count == 1 ? $"Keeping {Clock(_selected.Kept)}" : $"Keeping {Clock(_selected.Kept)} in {_selected.Segments.Count} parts";
+        TrimHint.Text = _selected.Segments.Count == 1 ? UiText.F(UiText.HintKeeping, Clock(_selected.Kept)) : UiText.F(UiText.HintKeepingParts, Clock(_selected.Kept), _selected.Segments.Count);
     }
 
     /// <summary>The part edits apply to: the selected one, else the one under or nearest to the playhead.</summary>
@@ -833,12 +879,12 @@ public partial class MainWindow : Window
         if (index >= 0)
         {
             var segment = _selected.Segments[index];
-            SegmentLabel.Text = _selected.Segments.Count > 1 ? $"PART {index + 1} OF {_selected.Segments.Count}: START" : "START";
+            SegmentLabel.Text = _selected.Segments.Count > 1 ? UiText.F(UiText.SegPartStart, index + 1, _selected.Segments.Count) : UiText.SegStart;
             InBox.Text = Clock(segment.In);
             OutBox.Text = Clock(segment.Out);
         }
-        KeptLabel.Text = $"Kept {Clock(_selected.Kept)} of {Clock(_selected.Duration)}";
-        PartsLabel.Text = _selected.Segments.Count == 1 ? "" : $"· {_selected.Segments.Count} parts";
+        KeptLabel.Text = UiText.F(UiText.KeptOf, Clock(_selected.Kept), Clock(_selected.Duration));
+        PartsLabel.Text = _selected.Segments.Count == 1 ? "" : UiText.F(UiText.PartsCount, _selected.Segments.Count);
         CutSummary.Text = _selected.Segments.Count == 1
             ? $"[ {Clock(_selected.In)}   ] {Clock(_selected.Out)}"
             : string.Join("   ", _selected.Segments.Select((part, i) => $"{i + 1}: {Clock(part.In)}–{Clock(part.Out)}"));
@@ -903,9 +949,9 @@ public partial class MainWindow : Window
     {
         if (_selected == null) return;
         var index = Timeline.SegmentAt(_head);
-        if (index < 0) { StripStatus.Text = "Move the playhead into a kept part to split it."; return; }
+        if (index < 0) { StripStatus.Text = UiText.SplitOutside; return; }
         var part = _selected.Segments[index];
-        if (_head - part.In < 0.1 || part.Out - _head < 0.1) { StripStatus.Text = "Too close to the edge of the part to split."; return; }
+        if (_head - part.In < 0.1 || part.Out - _head < 0.1) { StripStatus.Text = UiText.SplitTooClose; return; }
         Edit(clip =>
         {
             clip.Segments.RemoveAt(index);
@@ -914,7 +960,7 @@ public partial class MainWindow : Window
         });
         Timeline.Selected = index + 1;
         UpdateCutFields();
-        StripStatus.Text = $"Split into {_selected.Segments.Count} parts. Click a part and press Delete to remove it, or drag its edges.";
+        StripStatus.Text = UiText.F(UiText.SplitDone, _selected.Segments.Count);
     }
 
     private void DeleteSegment_Click(object? sender, RoutedEventArgs e) => DeleteSegmentAtHead();
@@ -923,13 +969,13 @@ public partial class MainWindow : Window
     {
         if (_selected == null) return;
         var index = Timeline.Selected >= 0 ? Timeline.Selected : Timeline.SegmentAt(_head);
-        if (index < 0) { StripStatus.Text = "Click the part you want to remove first."; return; }
-        if (_selected.Segments.Count == 1) { StripStatus.Text = "At least one part has to stay. Split it first, or trim its edges."; return; }
+        if (index < 0) { StripStatus.Text = UiText.RemoveNoPart; return; }
+        if (_selected.Segments.Count == 1) { StripStatus.Text = UiText.RemoveLastPart; return; }
         Edit(clip => clip.Segments.RemoveAt(index));
         Timeline.Selected = -1;
         MoveHead(Timeline.SourceOf(Timeline.OutputOf(_head)));
         UpdateCutFields();
-        StripStatus.Text = $"Part removed. {Clock(_selected.Kept)} kept in {_selected.Segments.Count} part(s). Undo with Ctrl+Z.";
+        StripStatus.Text = UiText.F(UiText.PartRemoved, Clock(_selected.Kept), _selected.Segments.Count);
     }
 
     private void TrimBefore_Click(object? sender, RoutedEventArgs e) => MarkIn();
@@ -1051,7 +1097,7 @@ public partial class MainWindow : Window
             if (request == _frameRequest && clip == _selected && !HoverBadge.IsVisible) TrimPreview.Source = LoadBitmap(target);
         }
         catch { /* A damaged frame keeps the thumbnail in view. */ }
-        finally { File.Delete(target); if (request == _frameRequest) TrimLoading.IsVisible = false; }
+        finally { DeleteTemp(target); if (request == _frameRequest) TrimLoading.IsVisible = false; }
     }
 
     // ---- zoom
@@ -1103,9 +1149,9 @@ public partial class MainWindow : Window
         HoverBadge.IsVisible = false;
         _frameDelay.Stop();
         _playing = true;
-        PlayButton.Content = "⏸ Pause";
+        PlayButton.Content = UiText.Pause;
         try { _player.Play(_selected.Path, from, _selected.Fps, _selected.Width, _selected.Height, _selected.Box); }
-        catch (Exception ex) { _playing = false; PlayButton.Content = "▶ Play"; StripStatus.Text = $"Playback unavailable: {ex.Message}"; }
+        catch (Exception ex) { _playing = false; PlayButton.Content = UiText.Play; StripStatus.Text = UiText.F(UiText.PlaybackFailed, Loc.Engine(ex.Message)); }
     }
 
     private void StopPlay()
@@ -1113,7 +1159,7 @@ public partial class MainWindow : Window
         if (!_playing) return;
         _playing = false;
         _player.Stop();
-        PlayButton.Content = "▶ Play";
+        PlayButton.Content = UiText.Play;
         RequestFrame();
     }
 
@@ -1256,12 +1302,12 @@ public partial class MainWindow : Window
     private void UpdateCleanHint()
     {
         if (CleanHint == null || RemoveOsd == null) return;
-        var parts = new List<string> { IsAnalog ? "Analog" : "HDZero" };
-        if (NoiseSlider.Value > 0) parts.Add("denoised");
-        if (RemoveOsd.IsChecked == true) parts.Add("OSD removed");
+        var parts = new List<string> { IsAnalog ? UiText.SignalAnalog : UiText.SignalHdzero };
+        if (NoiseSlider.Value > 0) parts.Add(UiText.HintDenoised);
+        if (RemoveOsd.IsChecked == true) parts.Add(UiText.OsdRemovedSummary);
         if (SizePercent != 100) parts.Add((SizePercent / 100.0).ToString("0.#", CultureInfo.InvariantCulture) + "×");
-        if (Effort != "balanced") parts.Add(Effort);
-        if (LookOn) parts.Add("look");
+        if (Effort != "balanced") parts.Add(Effort == "fast" ? UiText.SpeedFast : UiText.SpeedBest);
+        if (LookOn) parts.Add(UiText.LookLabel);
         CleanHint.Text = string.Join(" · ", parts);
         if (!_applyingPreset) RepairChanged();
     }
@@ -1290,10 +1336,10 @@ public partial class MainWindow : Window
     /// <summary>Look presets: strengths of grade, glow, vignette, grain and lens fringe, 0..100.</summary>
     private static readonly (string Id, string Title, (int Grade, int Glow, int Vignette, int Grain, int Fringe) Values)[] Looks =
     [
-        ("clean", "Clean", (30, 20, 25, 10, 0)),
-        ("cinematic", "Cinematic", (60, 45, 50, 25, 35)),
-        ("punchy", "Punchy", (100, 70, 60, 15, 50)),
-        ("retro-fpv", "Retro FPV", (50, 80, 85, 90, 100)),
+        ("clean", UiText.LookClean, (30, 20, 25, 10, 0)),
+        ("cinematic", UiText.LookCinematic, (60, 45, 50, 25, 35)),
+        ("punchy", UiText.LookPunchy, (100, 70, 60, 15, 50)),
+        ("retro-fpv", UiText.LookRetro, (50, 80, 85, 90, 100)),
     ];
 
     private bool _settingLook;
@@ -1370,7 +1416,7 @@ public partial class MainWindow : Window
     {
         LookSliders.IsVisible = !LookSliders.IsVisible;
         LookAdjustButton.Content = LookSliders.IsVisible ? UiText.Hide : UiText.Adjust;
-        ToolTip.SetTip(LookAdjustButton, LookSliders.IsVisible ? "Fold the look sliders away" : "Show the five look sliders");
+        ToolTip.SetTip(LookAdjustButton, LookSliders.IsVisible ? UiText.LookFoldTip : UiText.LookAdjustTip);
     }
 
     // The last rendered frame: original and, with a look, the repaired frame without it.
@@ -1383,7 +1429,7 @@ public partial class MainWindow : Window
         if (CompareLeftLabel == null || LookCompare == null) return;
         var plain = LookCompare.IsChecked == true && _comparePlain != null;
         if (_compareOriginal != null) CompareBefore.Source = plain ? _comparePlain : _compareOriginal;
-        CompareLeftLabel.Text = plain ? "WITHOUT LOOK" : UiText.LabelOriginal;
+        CompareLeftLabel.Text = plain ? UiText.LabelWithoutLook : UiText.LabelOriginal;
         CompareRightLabel.Text = UiText.LabelCleaned;
     }
 
@@ -1550,7 +1596,7 @@ public partial class MainWindow : Window
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { AllowMultiple = false });
         var path = files.Count > 0 ? files[0].TryGetLocalPath() : null;
         if (path == null) return;
-        if (!IsCompatibleModel(path, IsAnalog ? "analog" : "digital")) { PreviewStatus.Text = "That file is not a model for this signal type."; return; }
+        if (!IsCompatibleModel(path, IsAnalog ? "analog" : "digital")) { PreviewStatus.Text = UiText.ModelWrongSignal; return; }
         ModelPath.Text = path;
     }
 
@@ -1571,16 +1617,16 @@ public partial class MainWindow : Window
     private async void StartTrain_Click(object? sender, RoutedEventArgs e)
     {
         if (_trainingCancel != null) return;
-        if (string.IsNullOrWhiteSpace(TrainFolder.Text) || !Directory.Exists(TrainFolder.Text)) { TrainStatus.Text = "Choose a folder with recordings."; return; }
+        if (string.IsNullOrWhiteSpace(TrainFolder.Text) || !Directory.Exists(TrainFolder.Text)) { TrainStatus.Text = UiText.TrainNeedFolder; return; }
         var signal = TrainSignal.SelectedIndex == 0 ? "analog" : "digital";
         var continuing = TrainApproach.SelectedIndex == 1;
         var initialModel = continuing ? (ResumeChoice.SelectedItem as ComboBoxItem)?.Tag as string : null;
         if (continuing && (initialModel == null || !IsCompatibleModel(initialModel, signal)))
-        { TrainStatus.Text = "Choose one of your models for this signal type."; return; }
+        { TrainStatus.Text = UiText.TrainNeedModel; return; }
         var destination = System.IO.Path.Combine(ModelFolder(), $"{signal}-{DateTime.Now:yyyyMMdd-HHmmss}.json");
-        TrainStatus.Text = "Sampling footage and training locally…"; TrainProgress.Value = 0;
+        TrainStatus.Text = UiText.TrainSampling; TrainProgress.Value = 0;
         _trainingCancel = new CancellationTokenSource(); CancelTrainButton.IsEnabled = true;
-        ShowBusy("Training the model", TrainStatus.Text, () => _trainingCancel?.Cancel());
+        ShowBusy(UiText.TrainBusyTitle, TrainStatus.Text, () => _trainingCancel?.Cancel());
         UpdateBusy(0);
         try
         {
@@ -1591,14 +1637,14 @@ public partial class MainWindow : Window
                 item => Dispatcher.UIThread.Post(() =>
                 {
                     TrainProgress.Value = Math.Min(99, (DateTime.UtcNow - started).TotalSeconds / seconds * 100);
-                    TrainStatus.Text = $"Learning from {item.GetProperty("samples").GetInt32():N0} samples…";
+                    TrainStatus.Text = UiText.F(UiText.TrainLearning, item.GetProperty("samples").GetInt32());
                     UpdateBusy(TrainProgress.Value / 100, TrainStatus.Text, Duration(DateTime.UtcNow - started));
                 }), _trainingCancel.Token);
             TrainProgress.Value = 100;
-            TrainStatus.Text = $"Saved version {outcome.GetProperty("training_runs").GetInt32()} ({outcome.GetProperty("samples").GetInt32():N0} sampled pixels) to {destination}";
+            TrainStatus.Text = UiText.F(UiText.TrainSaved, outcome.GetProperty("training_runs").GetInt32(), outcome.GetProperty("samples").GetInt32(), destination);
             RefreshModelChoices(); RefreshResumeChoices();
         }
-        catch (OperationCanceledException) { TrainStatus.Text = "Training stopped."; }
+        catch (OperationCanceledException) { TrainStatus.Text = UiText.TrainStopped; }
         catch (Exception ex) { TrainStatus.Text = ex.Message; }
         finally { _trainingCancel.Dispose(); _trainingCancel = null; CancelTrainButton.IsEnabled = false; HideBusy(); }
     }
@@ -1641,13 +1687,13 @@ public partial class MainWindow : Window
         var folder = OutputFolderPath;
         if (!Directory.Exists(folder)) return;
         try { OpenInFileManager(folder); }
-        catch (Exception ex) { ExportStatus.Text = $"Could not open the folder: {ex.Message}"; }
+        catch (Exception ex) { ExportStatus.Text = UiText.F(UiText.OpenFolderFailed, ex.Message); }
     }
 
     private void UpdateExportSummary()
     {
         var total = _queue.Sum(clip => clip.Kept);
-        if (_exportCancel == null) ExportStatus.Text = _queue.Count == 0 ? "Add clips in Import first." : "Ready to export.";
+        if (_exportCancel == null) ExportStatus.Text = _queue.Count == 0 ? UiText.ExportNeedClips : UiText.ExportReady;
         ExportButton.Content = _queue.Count > 1 ? string.Format(CultureInfo.CurrentCulture, UiText.ExportMany, _queue.Count) : UiText.ExportOne;
         ExportSummary.Text = _queue.Count == 0 ? UiText.ExportSummaryEmpty
             : string.Format(CultureInfo.CurrentCulture, UiText.ExportSummary, _queue.Count, Clock(total), CleanHint.Text);
@@ -1660,14 +1706,14 @@ public partial class MainWindow : Window
     private async void AutoRefine_Click(object? sender, RoutedEventArgs e)
     {
         if (_exportCancel != null) return;
-        if (_reviewClip == null || !_queue.Contains(_reviewClip)) { ReviewNote.Text = "The clip is no longer in the queue."; return; }
-        if (_assessedHeadroom < 0) { ReviewNote.Text = "The measurement is still running; try again in a moment."; return; }
+        if (_reviewClip == null || !_queue.Contains(_reviewClip)) { ReviewNote.Text = UiText.ReviewClipGone; return; }
+        if (_assessedHeadroom < 0) { ReviewNote.Text = UiText.ReviewStillMeasuring; return; }
         StopReviewPlayback();
         var (settings, explanation) = SuggestSettings(secondPass: false);
         ApplyRepair(settings);
         RememberSettings();
-        ExportStatus.Text = $"Auto refine: {explanation}";
-        ReviewNote.Text = "Auto refine is exporting the original again with the suggested settings; the result replaces this view when it is done.";
+        ExportStatus.Text = UiText.F(UiText.AutoRefineStatus, explanation);
+        ReviewNote.Text = UiText.AutoRefineRunning;
         await ExportAsync([_reviewClip], (SuffixBox.Text?.Trim() ?? "") + "-refined");
     }
 
@@ -1686,13 +1732,13 @@ public partial class MainWindow : Window
     private async Task ExportAsync(List<FootageItem> clips, string suffix)
     {
         if (_exportCancel != null) return;
-        if (clips.Count == 0) { ExportStatus.Text = "Add clips in Import first."; return; }
+        if (clips.Count == 0) { ExportStatus.Text = UiText.ExportNeedClips; return; }
         var folder = OutputFolderPath;
-        if (string.IsNullOrWhiteSpace(folder)) { ExportStatus.Text = "Choose a destination folder."; return; }
-        if (Mode == "model" && !File.Exists(ModelPath.Text)) { ExportStatus.Text = "Choose a trained model under Repair → Advanced."; return; }
-        if (suffix.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0) { ExportStatus.Text = "The file name suffix contains characters that are not allowed."; return; }
+        if (string.IsNullOrWhiteSpace(folder)) { ExportStatus.Text = UiText.ExportNeedFolder; return; }
+        if (Mode == "model" && !File.Exists(ModelPath.Text)) { ExportStatus.Text = UiText.ExportNeedModel; return; }
+        if (suffix.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0) { ExportStatus.Text = UiText.ExportBadSuffix; return; }
         try { Directory.CreateDirectory(folder); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { ExportStatus.Text = $"Could not create the folder: {ex.Message}"; return; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { ExportStatus.Text = UiText.F(UiText.CreateFolderFailed, ex.Message); return; }
         ShowOutputFolder();
         RememberSettings();
         var join = JoinClips.IsChecked == true && clips.Count > 1;
@@ -1710,7 +1756,7 @@ public partial class MainWindow : Window
             for (var number = 2; !usedTargets.Add(target) || File.Exists(target); number++)
                 target = System.IO.Path.Combine(folder, $"{prefix}{baseName}{suffix}-{number}{extension}");
             if (System.IO.Path.GetFullPath(target).Equals(System.IO.Path.GetFullPath(clip.Path), StringComparison.OrdinalIgnoreCase))
-            { ExportStatus.Text = "Source and output must differ."; return; }
+            { ExportStatus.Text = UiText.ExportSameFile; return; }
             targets.Add(target);
         }
         // The settings are fixed when the export starts: the pages stay usable while it runs.
@@ -1734,8 +1780,8 @@ public partial class MainWindow : Window
                 var clip = clips[i];
                 var target = targets[i];
                 ExportStatus.Text = "";
-                ExportRunText.Text = clips.Count == 1 ? $"Rendering {clip}" : $"Rendering {i + 1} of {clips.Count}: {clip}";
-                ExportHint.Text = $"Rendering {i + 1}/{clips.Count}";
+                ExportRunText.Text = clips.Count == 1 ? UiText.F(UiText.RenderingOne, clip) : UiText.F(UiText.RenderingMany, i + 1, clips.Count, clip);
+                ExportHint.Text = UiText.F(UiText.HintRendering, i + 1, clips.Count);
                 var before = finished;
                 var share = clip.Kept / total;
                 try
@@ -1752,8 +1798,8 @@ public partial class MainWindow : Window
                 {
                     RemovePartialOutput(target);
                     if (join) foreach (var part in targets) { try { File.Delete(part); } catch (IOException) { } }
-                    ExportStatus.Text = $"Export canceled. {i} of {clips.Count} clip(s) finished.";
-                    ExportHint.Text = "Canceled";
+                    ExportStatus.Text = UiText.F(UiText.ExportCanceled, i, clips.Count);
+                    ExportHint.Text = UiText.ExportHintCanceled;
                     return;
                 }
                 finished = before + share;
@@ -1767,7 +1813,7 @@ public partial class MainWindow : Window
                         made.TryGetProperty("fps", out var fps) ? fps.GetDouble() : clip.Fps);
                 }
                 catch { _reviewOutInfo = (clip.Width, clip.Height, clip.Fps); }
-                ReviewTitle.Text = $"{clip} · original and cleaned result";
+                ReviewTitle.Text = UiText.F(UiText.ReviewClipTitle, clip);
                 _reviewSeeking = true; ReviewSeek.Maximum = clip.Kept; ReviewSeek.Value = 0; _reviewSeeking = false;
                 ReviewPanel.IsVisible = true;
                 Dispatcher.UIThread.Post(() => { _reviewSeeking = true; ReviewSeek.Value = 0; _reviewSeeking = false; });
@@ -1776,7 +1822,7 @@ public partial class MainWindow : Window
             }
             if (join)
             {
-                ExportRunText.Text = "Joining the clips into one video…";
+                ExportRunText.Text = UiText.JoiningClips;
                 try
                 {
                     await EngineAsync(new { action = "merge", sources = targets, target = joined }, null, _exportCancel.Token);
@@ -1791,20 +1837,20 @@ public partial class MainWindow : Window
                         var visible = System.IO.Path.Combine(folder, System.IO.Path.GetFileName(part).TrimStart('.'));
                         try { File.Move(part, visible, overwrite: true); } catch (IOException) { }
                     }
-                    ExportStatus.Text = $"Exported {clips.Count} clip(s), but joining failed: {ex.Message} The clips were saved separately.";
-                    ExportHint.Text = "Done";
+                    ExportStatus.Text = UiText.F(UiText.JoinFailed, clips.Count, Loc.Engine(ex.Message));
+                    ExportHint.Text = UiText.Done;
                     FinishExport(folder);
                     return;
                 }
             }
             ExportProgress.Value = 100;
             ExportStatus.Text = join
-                ? $"Exported {clips.Count} clip(s) joined into {System.IO.Path.GetFileName(joined)} in {Duration(DateTime.UtcNow - _exportStarted)}."
-                : $"Exported {clips.Count} clip(s) in {Duration(DateTime.UtcNow - _exportStarted)}.";
-            ExportHint.Text = "Done";
+                ? UiText.F(UiText.ExportedJoined, clips.Count, System.IO.Path.GetFileName(joined), Duration(DateTime.UtcNow - _exportStarted))
+                : UiText.F(UiText.Exported, clips.Count, Duration(DateTime.UtcNow - _exportStarted));
+            ExportHint.Text = UiText.Done;
             FinishExport(folder);
         }
-        catch (Exception ex) { ExportStatus.Text = $"Export failed: {ex.Message}"; ExportHint.Text = "Failed"; }
+        catch (Exception ex) { ExportStatus.Text = UiText.F(UiText.ExportFailed, Loc.Engine(ex.Message)); ExportHint.Text = UiText.ExportHintFailed; }
         finally
         {
             _exportClock.Stop(); ExportTime.Text = "";
@@ -1842,7 +1888,7 @@ public partial class MainWindow : Window
     {
         if (_exportCancel == null) return;
         CancelExportButton.IsEnabled = false;
-        ExportRunText.Text = "Canceling…";
+        ExportRunText.Text = UiText.Canceling;
         _exportCancel.Cancel();
     }
 
@@ -1852,9 +1898,9 @@ public partial class MainWindow : Window
         // The first seconds go to OSD search and decoder start-up; wait for real
         // progress before projecting a finishing time.
         if (_exportDone < 0.005 || elapsed.TotalSeconds < 3)
-        { ExportTime.Text = $"Elapsed {Duration(elapsed)} · estimating remaining time…"; return; }
+        { ExportTime.Text = UiText.F(UiText.ElapsedEstimating, Duration(elapsed)); return; }
         var remaining = TimeSpan.FromSeconds(elapsed.TotalSeconds * (1 - _exportDone) / _exportDone);
-        ExportTime.Text = $"{100 * _exportDone:0}% · about {Duration(remaining)} left · elapsed {Duration(elapsed)}";
+        ExportTime.Text = UiText.F(UiText.ExportClock, 100 * _exportDone, Duration(remaining), Duration(elapsed));
     }
 
     private static void RemovePartialOutput(string target)
@@ -1895,8 +1941,8 @@ public partial class MainWindow : Window
             ReviewTime.Text = Clock(moment);
             UpdateWipe();
         }
-        catch (Exception ex) { ExportStatus.Text = $"Review frame unavailable: {ex.Message}"; }
-        finally { File.Delete(before); File.Delete(after); _loadingReview = false; }
+        catch (Exception ex) { ExportStatus.Text = UiText.F(UiText.ReviewFrameFailed, Loc.Engine(ex.Message)); }
+        finally { DeleteTemp(before, after); _loadingReview = false; }
     }
 
     /// <summary>The source moment that ended up at this point of the exported file.</summary>
@@ -1931,7 +1977,7 @@ public partial class MainWindow : Window
     {
         if (_reviewSource == null || _reviewOutput == null || _reviewClip == null) return;
         _reviewPlaying = true;
-        ReviewPlayButton.Content = "⏸ Pause";
+        ReviewPlayButton.Content = UiText.Pause;
         try
         {
             var source = SourceTimeOf(outputSeconds);
@@ -1944,7 +1990,7 @@ public partial class MainWindow : Window
                 _reviewOutInfo.Width, _reviewOutInfo.Height, outputBox, _reviewClip.Box);
             if (outputBox is { } shown && shown.Height > 0) _reviewAspect = (double)shown.Width / shown.Height;
         }
-        catch (Exception ex) { StopReviewPlayback(); ReviewNote.Text = $"Playback unavailable: {ex.Message}"; }
+        catch (Exception ex) { StopReviewPlayback(); ReviewNote.Text = UiText.F(UiText.PlaybackFailed, Loc.Engine(ex.Message)); }
     }
 
     private double _reviewPairOffset;
@@ -1954,7 +2000,7 @@ public partial class MainWindow : Window
         if (!_reviewPlaying) return;
         _reviewPlaying = false;
         _reviewPair.Stop();
-        ReviewPlayButton.Content = "▶ Play both";
+        ReviewPlayButton.Content = UiText.PlayBoth;
     }
 
     private int SegmentIndexOf(double sourceSeconds)
@@ -1989,7 +2035,7 @@ public partial class MainWindow : Window
     {
         _assessedHeadroom = -1;
         GainLabel.Text = HeadroomLabel.Text = LossLabel.Text = "…";
-        ReviewAssessment.Text = "Measuring grain, colour noise and streaks in original and result…";
+        ReviewAssessment.Text = UiText.MeasuringDetail;
         try
         {
             var report = await EngineAsync(new { action = "assess", source = clip.Path, target,
@@ -2003,22 +2049,22 @@ public partial class MainWindow : Window
             _assessedHeadrooms = report.GetProperty("headrooms").EnumerateObject().ToDictionary(item => item.Name, item => item.Value.GetDouble());
             GainLabel.Text = $"{_assessedGain:0} %";
             HeadroomLabel.Text = $"~{_assessedHeadroom:0} %";
-            LossLabel.Text = $"−{_assessedLoss:0.#} % detail";
+            LossLabel.Text = UiText.F(UiText.LossDetail, _assessedLoss);
             var gains = report.GetProperty("gains");
             var parts = new List<string>();
             foreach (var item in gains.EnumerateObject())
-                parts.Add($"{item.Name switch { "grain" => "grain", "colour" => "colour noise", "streaks" => "streaks", _ => "block seams" }} −{item.Value.GetDouble():0} %");
+                parts.Add(UiText.F(UiText.ArtefactRemoved, item.Name switch { "grain" => UiText.ArtefactGrain, "colour" => UiText.ArtefactColour, "streaks" => UiText.ArtefactStreaks, _ => UiText.ArtefactBlocks }, item.Value.GetDouble()));
             var advice = _assessedHeadroom < 5
-                ? "The result is close to what the footage allows. A second pass would mostly cost detail."
+                ? UiText.AssessClose
                 : _secondPassWorth
-                    ? $"Worth another go: raise noise reduction or colour repair under Try other settings (no loss), or run the cleaned file again (about {_assessedLoss:0.#} % detail lost per pass)."
-                    : "Small headroom left. Prefer Try other settings: it re-exports the original and loses nothing.";
-            ReviewAssessment.Text = $"Artefacts removed so far: {string.Join(", ", parts)}. {advice} Estimates from {16} sampled frames.";
+                    ? UiText.F(UiText.AssessWorth, _assessedLoss)
+                    : UiText.AssessSmall;
+            ReviewAssessment.Text = UiText.F(UiText.AssessSummary, string.Join(", ", parts), advice, 16);
         }
         catch (Exception ex)
         {
             GainLabel.Text = HeadroomLabel.Text = LossLabel.Text = "—";
-            ReviewAssessment.Text = $"Could not measure the result: {ex.Message}";
+            ReviewAssessment.Text = UiText.F(UiText.AssessFailed, Loc.Engine(ex.Message));
         }
     }
 
@@ -2043,31 +2089,31 @@ public partial class MainWindow : Window
         if (grain > 5 || Left("streaks") > 5)
         {
             next.Noise = Raise(current.Noise, Math.Max(grain, Left("streaks")));
-            if (next.Noise != current.Noise) reasons.Add($"noise reduction {current.Noise} → {next.Noise}");
+            if (next.Noise != current.Noise) reasons.Add(UiText.F(UiText.ReasonNoise, current.Noise, next.Noise));
         }
         if (current.Signal == "analog" && Left("colour") > 5)
         {
             next.Colour = Raise(current.Colour, Left("colour"));
-            if (next.Colour != current.Colour) reasons.Add($"colour repair {current.Colour} → {next.Colour}");
+            if (next.Colour != current.Colour) reasons.Add(UiText.F(UiText.ReasonColour, current.Colour, next.Colour));
         }
         if (current.Signal == "digital" && Left("seams") > 5)
         {
             next.Block = Raise(current.Block, Left("seams"));
-            if (next.Block != current.Block) reasons.Add($"block repair {current.Block} → {next.Block}");
+            if (next.Block != current.Block) reasons.Add(UiText.F(UiText.ReasonBlock, current.Block, next.Block));
         }
-        if (_assessedHeadroom >= 15 && current.Effort != "best") { next.Effort = "best"; reasons.Add("speed → Best"); }
+        if (_assessedHeadroom >= 15 && current.Effort != "best") { next.Effort = "best"; reasons.Add(UiText.ReasonBest); }
         if (secondPass)
         {
             // The first pass already handled these; doing them twice only blurs.
-            if (current.Osd) { next.Osd = false; reasons.Add("OSD removal off (already done)"); }
-            if (current.Size != 100) { next.Size = 100; reasons.Add("size → original (already upscaled)"); }
-            if (current.Look) { next.Look = false; reasons.Add("look off (already applied)"); }
-            if (current.Signal == "analog" && Left("colour") <= 5 && current.Colour > 20) { next.Colour = 20; reasons.Add("colour repair → 20 (colour is clean already)"); }
+            if (current.Osd) { next.Osd = false; reasons.Add(UiText.ReasonOsdOff); }
+            if (current.Size != 100) { next.Size = 100; reasons.Add(UiText.ReasonSizeOriginal); }
+            if (current.Look) { next.Look = false; reasons.Add(UiText.ReasonLookOff); }
+            if (current.Signal == "analog" && Left("colour") <= 5 && current.Colour > 20) { next.Colour = 20; reasons.Add(UiText.ReasonColourClean); }
             next.Detail = Math.Min(current.Detail, 10);
-            next.Quality = Math.Min(current.Quality, 15); reasons.Add($"quality → {next.Quality} to keep the loss small");
+            next.Quality = Math.Min(current.Quality, 15); reasons.Add(UiText.F(UiText.ReasonQuality, next.Quality));
         }
-        var explanation = reasons.Count == 0 ? "The settings already match what is left; nothing changed."
-            : "Settings chosen from the measurement: " + string.Join(", ", reasons) + ".";
+        var explanation = reasons.Count == 0 ? UiText.RefineNothing
+            : UiText.F(UiText.RefineChosen, string.Join(", ", reasons));
         return (next, explanation);
     }
 
@@ -2081,21 +2127,20 @@ public partial class MainWindow : Window
         {
             var (settings, explanation) = SuggestSettings(secondPass: false);
             ApplyRepair(settings);
-            PreviewStatus.Text = $"{explanation} Render a frame to check, then export again: the original is used, so nothing is lost.";
+            PreviewStatus.Text = UiText.F(UiText.TryOtherChosen, explanation);
         }
-        else PreviewStatus.Text = "Adjust the settings and render a frame to check; then export again. The original is used, so nothing is lost.";
+        else PreviewStatus.Text = UiText.TryOtherNote;
     }
 
     /// <summary>A second pass over the cleaned file, for repairs that build on the first result.</summary>
     private async void Refine_Click(object? sender, RoutedEventArgs e)
     {
-        if (_reviewOutput == null || !File.Exists(_reviewOutput)) { ReviewNote.Text = "The cleaned file is no longer there."; return; }
+        if (_reviewOutput == null || !File.Exists(_reviewOutput)) { ReviewNote.Text = UiText.CleanedGone; return; }
         StopReviewPlayback();
         if (_assessedHeadroom >= 0 && !_secondPassWorth)
         {
             // Say what the second pass costs and what it can bring before anything is queued.
-            ReviewNote.Text = $"Heads-up: about {_assessedHeadroom:0} % improvement is still possible, but every pass loses about {_assessedLoss:0.#} % detail to re-encoding. " +
-                              "Try other settings keeps the original and picks matching settings for you. Press Refine again to go ahead anyway.";
+            ReviewNote.Text = UiText.F(UiText.RefineWarning, _assessedHeadroom, _assessedLoss);
             _assessedHeadroom = -1;
             return;
         }
@@ -2107,7 +2152,7 @@ public partial class MainWindow : Window
         ShowPage(2);
         var (settings, explanation) = SuggestSettings(secondPass: true);
         ApplyRepair(settings);
-        PreviewStatus.Text = $"Second pass on the cleaned file. {explanation} Every re-encode costs about {Math.Max(0.5, (settings.Quality - 12) * 0.6):0.#} % detail, so prefer Try other settings for colour fixes.";
+        PreviewStatus.Text = UiText.F(UiText.SecondPass, explanation, Math.Max(0.5, (settings.Quality - 12) * 0.6));
     }
 
     private void ReviewMode_Changed(object? sender, RoutedEventArgs e)
@@ -2163,7 +2208,7 @@ public partial class MainWindow : Window
     private void Share_Click(object? sender, RoutedEventArgs e)
     {
         if (_reviewOutput == null || !File.Exists(_reviewOutput))
-        { ReviewNote.Text = "The cleaned file is no longer there."; return; }
+        { ReviewNote.Text = UiText.CleanedGone; return; }
         StopReviewPlayback();
         _fillingShare = true;
         var memory = ShareMemory;
@@ -2173,7 +2218,7 @@ public partial class MainWindow : Window
         ShowShareSound();
         _shareMade = null;
         ShareFolderButton.IsVisible = false;
-        ShareStatus.Text = $"Saved next to the cleaned file as {System.IO.Path.GetFileName(ShareTarget())}.";
+        ShareStatus.Text = UiText.F(UiText.ShareWillSave, System.IO.Path.GetFileName(ShareTarget()));
         ShareOverlay.IsVisible = true;
         PageScroller.Effect = new BlurEffect { Radius = 10 };
     }
@@ -2191,7 +2236,7 @@ public partial class MainWindow : Window
         if (_fillingShare || ShareSound == null || sender is RadioButton { IsChecked: not true }) return;
         ShowShareSound();
         RememberShare();
-        ShareStatus.Text = $"Saved next to the cleaned file as {System.IO.Path.GetFileName(ShareTarget())}.";
+        ShareStatus.Text = UiText.F(UiText.ShareWillSave, System.IO.Path.GetFileName(ShareTarget()));
     }
 
     private void ShareSound_Changed(object? sender, RoutedEventArgs e)
@@ -2234,7 +2279,7 @@ public partial class MainWindow : Window
         var folder = System.IO.Path.GetDirectoryName(_shareMade ?? _reviewOutput ?? "");
         if (folder == null || !Directory.Exists(folder)) return;
         try { OpenInFileManager(folder); }
-        catch (Exception ex) { ShareStatus.Text = $"Could not open the folder: {ex.Message}"; }
+        catch (Exception ex) { ShareStatus.Text = UiText.F(UiText.OpenFolderFailed, ex.Message); }
     }
 
     private CancellationTokenSource? _shareCancel;
@@ -2242,15 +2287,15 @@ public partial class MainWindow : Window
     private async void ShareMake_Click(object? sender, RoutedEventArgs e)
     {
         if (_shareCancel != null || _reviewOutput == null) return;
-        if (!File.Exists(_reviewOutput)) { ShareStatus.Text = "The cleaned file is no longer there."; return; }
+        if (!File.Exists(_reviewOutput)) { ShareStatus.Text = UiText.CleanedGone; return; }
         RememberShare();
         var target = ShareTarget();
         var vertical = ShareIsVertical;
         _shareCancel = new CancellationTokenSource();
         var started = DateTime.UtcNow;
         ShareOverlay.IsVisible = false;
-        ShowBusy(vertical ? "Making the 9:16 video" : "Making the 16:9 video",
-            vertical ? "Cropping the cleaned clip to the phone screen, following the action." : "Placing the cleaned clip in a 16:9 frame.",
+        ShowBusy(vertical ? UiText.ShareBusyVertical : UiText.ShareBusyLandscape,
+            vertical ? UiText.ShareBusyVerticalText : UiText.ShareBusyLandscapeText,
             () => _shareCancel?.Cancel());
         UpdateBusy(0);
         try
@@ -2262,19 +2307,19 @@ public partial class MainWindow : Window
             }, item =>
             {
                 var done = item.GetProperty("fraction").GetDouble();
-                Dispatcher.UIThread.Post(() => UpdateBusy(done, null, $"elapsed {Duration(DateTime.UtcNow - started)}"));
+                Dispatcher.UIThread.Post(() => UpdateBusy(done, null, UiText.F(UiText.ElapsedShort, Duration(DateTime.UtcNow - started))));
             }, _shareCancel.Token);
             _shareMade = target;
             var seconds = result.GetProperty("duration").GetDouble();
-            ShareStatus.Text = $"Saved {System.IO.Path.GetFileName(target)}: {seconds:0.0} s, {result.GetProperty("width").GetInt32()}×{result.GetProperty("height").GetInt32()}.";
+            ShareStatus.Text = UiText.F(UiText.ShareSaved, System.IO.Path.GetFileName(target), seconds, result.GetProperty("width").GetInt32(), result.GetProperty("height").GetInt32());
             ShareFolderButton.IsVisible = true;
         }
         catch (OperationCanceledException)
         {
             RemovePartialOutput(target);
-            ShareStatus.Text = "Canceled. Nothing was saved.";
+            ShareStatus.Text = UiText.ShareCanceled;
         }
-        catch (Exception ex) { ShareStatus.Text = $"The share video failed: {ex.Message}"; }
+        catch (Exception ex) { ShareStatus.Text = UiText.F(UiText.ShareFailed, Loc.Engine(ex.Message)); }
         finally
         {
             _shareCancel.Dispose(); _shareCancel = null;

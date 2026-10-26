@@ -108,7 +108,7 @@ public sealed class FramePlayer : IDisposable
         foreach (var argument in new[] { "-hide_banner", "-loglevel", "error", "-nostdin" }.Concat(input)
                      .Concat(["-f", "rawvideo", "-pix_fmt", "bgra", "-"]))
             info.ArgumentList.Add(argument);
-        _process = Process.Start(info) ?? throw new InvalidOperationException("Could not start FFmpeg for playback");
+        _process = Process.Start(info) ?? throw new InvalidOperationException(UiText.FfmpegNoStart);
         _process.StandardError.ReadToEndAsync();
         var process = _process;
         _reader = new Thread(() => ReadFrames(process, bitmap, second, width, height)) { IsBackground = true, Name = "preview playback" };
