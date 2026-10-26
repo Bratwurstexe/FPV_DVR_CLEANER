@@ -1,3 +1,12 @@
+> [!IMPORTANT]
+> ### Want to stay up to date? Download the launcher.
+> **The launcher always gets you the newest FPV DVR Cleaner.** Pick your system, and it downloads the latest release into its own folder (or a folder you choose), checks it, deletes the old version and starts the app.
+>
+> **[⬇ Launcher for Windows](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-windows-x64.exe)**&ensp;·&ensp;**[macOS Apple Silicon](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-macos-apple-silicon.zip)**&ensp;·&ensp;**[macOS Intel](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-macos-intel.zip)**&ensp;·&ensp;**[Linux](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-linux-x64.tar.gz)**
+>
+> <p align="center"><img src="docs/media/launcher.png" width="620" alt="The FPV DVR Cleaner launcher: Windows, macOS and Linux to choose from, the install folder, and an Install and open button"></p>
+
+
 <div align="center">
 
 <img src="docs/media/logo.svg" width="260" alt="FPV DVR Cleaner logo: an analog TV with a noisy picture and a small FPV quad hovering beside it">
@@ -19,8 +28,6 @@ Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, 
 
 <h2><a href="https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest">⬇ Download for Windows, macOS and Linux</a><br><sub>Ready to run, no Python or FFmpeg setup.</sub></h2>
 
-**[⬇ Launcher for Windows](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-windows-x64.exe)** · **[macOS Apple Silicon](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-macos-apple-silicon.zip)** · **[macOS Intel](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-macos-intel.zip)** · **[Linux](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-linux-x64.tar.gz)**<br><sub>The launcher installs the newest version and keeps it up to date.</sub>
-
 <hr>
 
 <p align="center"><a href="#what-it-does"><b>What it does</b></a>&ensp;·&ensp;<a href="#before-and-after"><b>Before / after</b></a>&ensp;·&ensp;<a href="#the-workflow"><b>Workflow</b></a>&ensp;·&ensp;<a href="#download"><b>Download</b></a>&ensp;·&ensp;<a href="#technical-details"><b>Technical details</b></a>&ensp;·&ensp;<a href="#licence"><b>Licence</b></a></p>
@@ -33,14 +40,14 @@ Removes rainbow stripes and black-and-white dropouts, rebuilds HDZero breakups, 
 
 ## What it does
 
-- 🌈 **Rainbow stripes, colour noise and dropouts** of analog recordings repaired from neighbouring frames
-- 🧩 **HDZero breakups** (coloured confetti) rebuilt, even when the whole frame is lost
-- 🔤 **OSD removed** on request, with a brush to fix what the search missed
-- 🔍 **Upscaled to 1080p** with detail from neighbouring frames, noise calmed, edges kept sharp
-- ✂️ **Trim like in a video editor**, check every repair on a real frame, export by purpose (YouTube, small file, editing, web)
-- 📱 **Share** as a ready 16:9 video for YouTube or 9:16 for Shorts, Reels and TikTok
-- 🌍 **In your language:** English, Deutsch, Français, Español, Italiano, Português (Brasil), Nederlands, Polski, Čeština, Русский, Українська, Türkçe, 日本語, 简体中文 and 한국어
-- 🔒 **Private and free:** runs on your own computer, uses CPU and graphics card together, no account, no upload
+- **Rainbow stripes, colour noise and dropouts** of analog recordings repaired from neighbouring frames
+- **HDZero breakups** (coloured confetti) rebuilt, even when the whole frame is lost
+- **OSD removed** on request, with a brush to fix what the search missed
+- **Upscaled to 1080p** with detail from neighbouring frames, noise calmed, edges kept sharp
+- **Trim like in a video editor**, check every repair on a real frame, export by purpose (YouTube, small file, editing, web)
+- **Share** as a ready 16:9 video for YouTube or 9:16 for Shorts, Reels and TikTok
+- **In your language:** English, Deutsch, Français, Español, Italiano, Português (Brasil), Nederlands, Polski, Čeština, Русский, Українська, Türkçe, 日本語, 简体中文 and 한국어
+- **Private and free:** runs on your own computer, uses CPU and graphics card together, no account, no upload
 
 ## Before and after
 
@@ -90,14 +97,7 @@ The app speaks 15 languages and follows the language of your system; English is 
 
 ## Download
 
-> [!IMPORTANT]
-> **The launcher always gets you the newest FPV DVR Cleaner.** Pick your system, and it downloads the latest release into its own folder (or a folder you choose), checks it, deletes the old version and starts the app.
->
-> **[⬇ Launcher for Windows](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-windows-x64.exe)**&ensp;·&ensp;**[macOS Apple Silicon](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-macos-apple-silicon.zip)**&ensp;·&ensp;**[macOS Intel](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-macos-intel.zip)**&ensp;·&ensp;**[Linux](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest/download/FPV-DVR-Cleaner-Launcher-linux-x64.tar.gz)**
->
-> <p align="center"><img src="docs/media/launcher.png" width="620" alt="The FPV DVR Cleaner launcher: Windows, macOS and Linux to choose from, the install folder, and an Install and open button"></p>
-
-**Easiest: the launcher.** Download the launcher for your system (links above), put it in a folder of your choice and start it. Your system is detected and preselected, but you can pick another one. It downloads the newest release, verifies its SHA-256 checksum, unpacks it next to itself, removes the old version and starts the app. Start it again whenever you like: it updates only when there is something new. You can choose another install folder at any time; the choice is remembered.
+**Easiest: the launcher.** Download the launcher for your system (links at the [top of this page](#readme)), put it in a folder of your choice and start it. Your system is detected and preselected, but you can pick another one. It downloads the newest release, verifies its SHA-256 checksum, unpacks it next to itself, removes the old version and starts the app. Start it again whenever you like: it updates only when there is something new. You can choose another install folder at any time; the choice is remembered.
 
 Or get the package for your system from the **[latest release](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest)** yourself. It contains the app, the video engine and FFmpeg. Unpack it and start it; nothing else has to be installed.
 
