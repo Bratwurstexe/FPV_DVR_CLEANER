@@ -652,7 +652,7 @@
               <Button Content="Try other settings" ToolTip.Tip="Back to Repair with this clip: the original is exported again, without any quality loss" Click="TryAgain_Click"/>
               <Button Content="Refine the cleaned file" ToolTip.Tip="Adds the cleaned file to the queue for a second pass, e.g. stronger noise reduction or upscaling" Click="Refine_Click"/>
             </StackPanel>
-              <Button x:Name="ShareButton" Grid.Column="1" Classes="dark" FontSize="14" Padding="16,8" Content="Share" ToolTip.Tip="Make a before/after video of this clip to post: YouTube, Shorts, Reels or TikTok" Click="Share_Click"/>
+              <Button x:Name="ShareButton" Grid.Column="1" Classes="dark" FontSize="14" Padding="16,8" Content="Share" ToolTip.Tip="The cleaned clip as a ready video for YouTube or for Shorts, Reels and TikTok" Click="Share_Click"/>
             </Grid>
           </Grid></Border>
         </Grid>
@@ -686,13 +686,13 @@
         </Grid>
       </Border>
 
-      <!-- Share: a before/after video of the finished clip. Good defaults; the rest folds out. -->
+      <!-- Share: the cleaned clip brought into a format to post. -->
       <Grid x:Name="ShareOverlay" Grid.Row="0" Grid.RowSpan="3" IsVisible="False" Background="#66101418">
         <Border Background="White" CornerRadius="16" Padding="26,20" Width="560" HorizontalAlignment="Center" VerticalAlignment="Center" BoxShadow="0 12 40 0 #40000000">
           <StackPanel Spacing="12">
             <StackPanel Spacing="2">
               <TextBlock Text="SHARE" Classes="eyebrow"/>
-              <TextBlock Text="A before/after video to post" Classes="heading"/>
+              <TextBlock Text="The cleaned clip, ready to post" Classes="heading"/>
             </StackPanel>
             <StackPanel Spacing="5">
               <TextBlock Text="FORMAT" Classes="label"/>
@@ -701,32 +701,7 @@
                 <RadioButton x:Name="ShareVertical" Classes="segment" GroupName="shareFormat" Content="9:16 &#x00B7; Shorts, Reels, TikTok" IsCheckedChanged="ShareFormat_Changed"/>
               </StackPanel>
             </StackPanel>
-            <StackPanel Spacing="5">
-              <TextBlock Text="LAYOUT" Classes="label"/>
-              <StackPanel Orientation="Horizontal">
-                <RadioButton x:Name="ShareLayoutA" Classes="chip" GroupName="shareLayout" Content="Side by side" IsChecked="True" IsCheckedChanged="ShareLayout_Changed"/>
-                <RadioButton x:Name="ShareLayoutB" Classes="chip" GroupName="shareLayout" Content="Wipe" IsCheckedChanged="ShareLayout_Changed"/>
-                <RadioButton x:Name="ShareLayoutC" Classes="chip" GroupName="shareLayout" Content="Flip" IsCheckedChanged="ShareLayout_Changed"/>
-              </StackPanel>
-              <TextBlock x:Name="ShareLayoutNote" Classes="note" FontSize="12" Text=""/>
-            </StackPanel>
-            <Button x:Name="ShareMoreButton" Content="More options &#x25BE;" Padding="0" Background="Transparent" Foreground="#9A4100" FontSize="12" FontWeight="SemiBold" Click="ShareMore_Click"/>
-            <StackPanel x:Name="ShareMore" IsVisible="False" Spacing="8">
-              <StackPanel Spacing="5">
-                <TextBlock Text="LENGTH" Classes="label"/>
-                <StackPanel Orientation="Horizontal">
-                  <RadioButton x:Name="ShareWhole" Classes="chip" GroupName="shareLength" Content="Whole clip" Tag="0" IsCheckedChanged="ShareOption_Changed"/>
-                  <RadioButton x:Name="ShareBest15" Classes="chip" GroupName="shareLength" Content="Best 15 s" Tag="15" IsCheckedChanged="ShareOption_Changed"/>
-                  <RadioButton x:Name="ShareBest30" Classes="chip" GroupName="shareLength" Content="Best 30 s" Tag="30" IsChecked="True" IsCheckedChanged="ShareOption_Changed"/>
-                  <RadioButton x:Name="ShareBest60" Classes="chip" GroupName="shareLength" Content="Best 60 s" Tag="60" IsCheckedChanged="ShareOption_Changed"/>
-                </StackPanel>
-              </StackPanel>
-              <CheckBox x:Name="ShareHighlights" IsChecked="True" Content="Slow motion and a frozen frame on the biggest repairs" IsCheckedChanged="ShareOption_Changed"/>
-              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="18">
-                <CheckBox x:Name="ShareSound" IsChecked="True" Content="Sound" IsCheckedChanged="ShareOption_Changed"/>
-                <CheckBox x:Name="ShareWatermark" Grid.Column="1" IsChecked="True" Content="Small &#x201C;Cleaned with FPV DVR Cleaner&#x201D; in the corner" IsCheckedChanged="ShareOption_Changed"/>
-              </Grid>
-            </StackPanel>
+            <CheckBox x:Name="ShareSound" IsChecked="True" Content="Sound" IsCheckedChanged="ShareSound_Changed"/>
             <TextBlock x:Name="ShareStatus" Classes="note" FontSize="12" Text=""/>
             <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
               <Button x:Name="ShareFolderButton" Content="Open folder" IsVisible="False" Click="ShareFolder_Click"/>

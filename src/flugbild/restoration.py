@@ -454,7 +454,12 @@ def _pump(decoder_args: list[str], encoder_args: list[str], workplace: str | Non
             if passed < skip:
                 passed += 1
                 continue
-            encoder.stdin.write(enhanced.tobytes())
+            try:
+                encoder.stdin.write(enhanced.tobytes())
+            except (BrokenPipeError, OSError):
+                # The encoder stopped early: its own message says why.
+                encoder.wait(timeout=120)
+                return diagnostic_tail(log) or "The video encoder stopped unexpectedly"
             sent += 1
             report(sent)
         encoder.stdin.close()
@@ -543,7 +548,12 @@ def process_temporal(source: Path, target: Path, recipe: Arbeitsrezept, info: Vi
             encoder_args.extend(["-map", "1:a?"])
         encoder_args.extend(["-t", str(duration), "-vf", filters])
         encoder_args.extend(options)
-        encoder_args.extend(["-shortest", str(pending)])
+        if info.has_audio:
+            # Recordings often carry a little less sound than picture. -shortest stopped the
+            # encoder when the sound ended, while frames were still coming ("Broken pipe");
+            # instead the sound is padded with silence and -t alone ends the file.
+            encoder_args.extend(["-af", "apad"])
+        encoder_args.append(str(pending))
         message = _pump(_decoder(source, recipe.schnittbeginn - lead_frames / fps, lead + duration + tail, fps, box),
                         encoder_args, workplace, (width, height), frame_limit, recipe, fingerprint, osd, cancel,
                         lambda sent: progress(min(1.0, sent / frame_limit)),

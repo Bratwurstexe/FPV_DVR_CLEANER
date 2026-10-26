@@ -160,6 +160,24 @@ jobs:
           rm -f ../smoke-parts.mp4
           cd ..
 
+      # The packaged engine, run like the app runs it, on realistic clips: sound shorter and
+      # longer than the picture, no sound, OSD removal with hand corrections, every format,
+      # trims, preview, mask editor and Share. Lengths, sizes and sound are checked, so an
+      # export that quietly cuts the video short fails too (0.7.1 broke on whole clips).
+      - name: Release check of the packaged engine
+        run: |
+          engine=app/engine/flugbild-engine; [ -f "$engine.exe" ] && engine="$engine.exe"
+          set +e
+          PATH="$PWD/app/ffmpeg:$PATH" python tools/release_check.py "$engine" --work release-check > release-check.txt 2>&1
+          status=$?
+          cat release-check.txt
+          if [ $status -ne 0 ]; then
+            grep -E "^FAIL" release-check.txt | head -20 | while read -r line; do
+              echo "::error title=Release check on ${{ matrix.rid }}::$line"
+            done
+          fi
+          exit $status
+
       - name: Build the launcher
         run: |
           dotnet publish desktop/FpvDvrCleaner.Launcher/FpvDvrCleaner.Launcher.csproj -c Release -r ${{ matrix.rid }} -o launcher

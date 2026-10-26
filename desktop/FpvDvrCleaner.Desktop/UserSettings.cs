@@ -100,18 +100,16 @@ public sealed class ClipMemory
     [JsonPropertyName("osdMask")] public string? OsdMask { get; set; }
 }
 
-/// <summary>How the last share video was made: format, layout per format, length and the extras.</summary>
+/// <summary>
+/// How the last share video was made: the format and the sound per format.
+/// Fields of earlier versions (layouts, length, highlights, watermark) in old files are ignored.
+/// </summary>
 public sealed class ShareChoices
 {
     [JsonPropertyName("format")] public string Format { get; set; } = "landscape";
-    [JsonPropertyName("layoutLandscape")] public string LayoutLandscape { get; set; } = "side";
-    [JsonPropertyName("layoutVertical")] public string LayoutVertical { get; set; } = "stacked";
-    [JsonPropertyName("length")] public int Length { get; set; } = 30;
-    [JsonPropertyName("highlights")] public bool Highlights { get; set; } = true;
     // Sound is on for 16:9 and off for 9:16, where music is usually added on the platform.
     [JsonPropertyName("soundLandscape")] public bool SoundLandscape { get; set; } = true;
     [JsonPropertyName("soundVertical")] public bool SoundVertical { get; set; }
-    [JsonPropertyName("watermark")] public bool Watermark { get; set; } = true;
 }
 
 /// <summary>

@@ -2,6 +2,31 @@
 
 What changed in each release of FPV DVR Cleaner. The newest release is described on its [release page](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/latest).
 
+## New in 0.7.1
+
+**Share-ready before/after videos**
+- After an export, press **Share** in the result view: one click on *Make video* turns the clip into a before/after video to post. The original and the cleaned clip are paired frame by frame, removed parts of the trim included.
+- **16:9 for YouTube** (1920×1080): side by side with *ORIGINAL* and *CLEANED* labels, a wipe with an orange split line that sweeps across, or a flip that switches between the two every two seconds.
+- **9:16 for Shorts, Reels and TikTok** (1080×1920): original above cleaned, or one full-screen cleaned picture under a moving wipe that follows the action.
+- **Slow motion on the biggest repairs:** frames where the repair changed the most, such as an HDZero breakup or a rainbow tear, are slowed to ×0.25 and frozen for a second, with a small tag.
+- **Best 15, 30 or 60 seconds**, chosen around the strongest repairs, or the whole clip. Sound is kept for 16:9 and left out for 9:16, where music is usually added on the platform; both can be changed.
+- A small *Cleaned with FPV DVR Cleaner* in the corner, which you can switch off. H.264 MP4 at 30 or 60 fps, saved next to the cleaned file as `…-share.mp4` or `…-short.mp4`. Your choices are remembered.
+
+**Cleaner buttons**
+- The zoom, transport and queue buttons use drawn icons, centred exactly; disabled queue arrows fade instead of changing colour.
+
+**Repair in two simple questions**
+- The Repair page asks *Signal* (Analog or HDZero, preselected from the recording when it is clear) and *How bad is it?* (Light, Normal, Strong), with one plain line about what that does. *Best quality* switches on 1080p upscaling and the Best speed in one go.
+- **OSD: Keep or Remove.** With Remove, **Fix by hand…** opens a mask editor over the page: the frame large with the found OSD in orange. Paint or box in what the search missed (small icons, REC) and keep what it took by mistake; undo, redo and *Reset to automatic*. The corrections are kept per recording and used in the preview and the export.
+- **My presets** is a short list of your own settings with Rename, Update with current settings and Delete; presets from earlier versions are in it.
+- Everything else (output size, speed, each repair as a slider, the trained model) is under **Advanced**, with a *Show* button per repair that renders the frame without and with only that effect.
+- The big before/after frame updates on its own shortly after a change. The page fits the window without scrolling, down to 1080×700.
+- One slim slider style in the whole app.
+
+**Export by purpose**
+- Choose what the video is for: *Share & play anywhere* (MP4 H.264), *Smallest file* (MP4 H.265), *For video editing* (MOV ProRes 422) or *For the web* (WebM). Quality, size limit, caption, file name, joining and MKV are under *More options*.
+- Without a chosen folder the files go to a *Cleaned* folder next to the first clip. Progress, remaining time and Cancel sit right under the big Export button.
+
 ## New in 0.6.0
 
 **Pick the file format**

@@ -14,30 +14,17 @@
 
 All packages include the app, the video engine and FFmpeg: unpack and start, nothing else to install. [`SHA256SUMS.txt`](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/releases/download/{TAG}/SHA256SUMS.txt) lists the checksum of every file.
 
-## New in 0.7.1
+## New in 0.7.2
 
-**Share-ready before/after videos**
-- After an export, press **Share** in the result view: one click on *Make video* turns the clip into a before/after video to post. The original and the cleaned clip are paired frame by frame, removed parts of the trim included.
-- **16:9 for YouTube** (1920×1080): side by side with *ORIGINAL* and *CLEANED* labels, a wipe with an orange split line that sweeps across, or a flip that switches between the two every two seconds.
-- **9:16 for Shorts, Reels and TikTok** (1080×1920): original above cleaned, or one full-screen cleaned picture under a moving wipe that follows the action.
-- **Slow motion on the biggest repairs:** frames where the repair changed the most, such as an HDZero breakup or a rainbow tear, are slowed to ×0.25 and frozen for a second, with a small tag.
-- **Best 15, 30 or 60 seconds**, chosen around the strongest repairs, or the whole clip. Sound is kept for 16:9 and left out for 9:16, where music is usually added on the platform; both can be changed.
-- A small *Cleaned with FPV DVR Cleaner* in the corner, which you can switch off. H.264 MP4 at 30 or 60 fps, saved next to the cleaned file as `…-share.mp4` or `…-short.mp4`. Your choices are remembered.
+**Important fix: exports of whole recordings**
+- In 0.7.1, exporting a recording without trimming it could stop with *"Export failed: [Errno 32] Broken pipe"* when its sound ends a moment before its picture, which is common for DVR files. Older versions finished such exports but cut the video to the length of the sound. Now the sound is filled with silence to the full length, and every frame is kept.
+- If the encoder ever stops early, the message now says why instead of "Broken pipe".
+- Every release is now checked by running the packaged app's engine on recordings with shorter, longer and no sound, with OSD removal and hand corrections, every file format, trims, preview, the mask editor and Share; lengths, sizes and sound are compared before anything is published.
 
-**Cleaner buttons**
-- The zoom, transport and queue buttons use drawn icons, centred exactly; disabled queue arrows fade instead of changing colour.
-
-**Repair in two simple questions**
-- The Repair page asks *Signal* (Analog or HDZero, preselected from the recording when it is clear) and *How bad is it?* (Light, Normal, Strong), with one plain line about what that does. *Best quality* switches on 1080p upscaling and the Best speed in one go.
-- **OSD: Keep or Remove.** With Remove, **Fix by hand…** opens a mask editor over the page: the frame large with the found OSD in orange. Paint or box in what the search missed (small icons, REC) and keep what it took by mistake; undo, redo and *Reset to automatic*. The corrections are kept per recording and used in the preview and the export.
-- **My presets** is a short list of your own settings with Rename, Update with current settings and Delete; presets from earlier versions are in it.
-- Everything else (output size, speed, each repair as a slider, the trained model) is under **Advanced**, with a *Show* button per repair that renders the frame without and with only that effect.
-- The big before/after frame updates on its own shortly after a change. The page fits the window without scrolling, down to 1080×700.
-- One slim slider style in the whole app.
-
-**Export by purpose**
-- Choose what the video is for: *Share & play anywhere* (MP4 H.264), *Smallest file* (MP4 H.265), *For video editing* (MOV ProRes 422) or *For the web* (WebM). Quality, size limit, caption, file name, joining and MKV are under *More options*.
-- Without a chosen folder the files go to a *Cleaned* folder next to the first clip. Progress, remaining time and Cancel sit right under the big Export button.
+**Share is a plain export now**
+- **Share** in the result view brings the cleaned clip into the right format, nothing more: **16:9 for YouTube** (1920×1080, or 1280×720 for SD recordings; the picture centred on black) or **9:16 for Shorts, Reels and TikTok** (1080×1920; the picture fills the screen and pans smoothly along with the action).
+- The card asks only for the format and the sound (on for 16:9, off for 9:16 unless you change it) and then *Make video*. The whole clip as you trimmed it, H.264 MP4 at up to 60 fps, saved next to the cleaned file as `…-youtube.mp4` or `…-short.mp4`.
+- The original picture, side by side, wipe and flip layouts, labels, slow motion on repairs, "best N seconds" and the watermark are gone.
 
 Earlier versions: see the [changelog](https://github.com/Bratwurstexe/FPV_DVR_CLEANER/blob/main/CHANGELOG.md).
 

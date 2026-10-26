@@ -2162,20 +2162,15 @@ public partial class MainWindow : Window
     /// <summary>Opens the share card with the last choices, ready for one click on Make video.</summary>
     private void Share_Click(object? sender, RoutedEventArgs e)
     {
-        if (_reviewSource == null || _reviewOutput == null || !File.Exists(_reviewOutput))
+        if (_reviewOutput == null || !File.Exists(_reviewOutput))
         { ReviewNote.Text = "The cleaned file is no longer there."; return; }
         StopReviewPlayback();
         _fillingShare = true;
         var memory = ShareMemory;
         ShareVertical.IsChecked = memory.Format == "vertical";
         ShareLandscape.IsChecked = memory.Format != "vertical";
-        foreach (var choice in new[] { ShareWhole, ShareBest15, ShareBest30, ShareBest60 })
-            choice.IsChecked = choice.Tag as string == memory.Length.ToString(CultureInfo.InvariantCulture);
-        if (new[] { ShareWhole, ShareBest15, ShareBest30, ShareBest60 }.All(choice => choice.IsChecked != true)) ShareBest30.IsChecked = true;
-        ShareHighlights.IsChecked = memory.Highlights;
-        ShareWatermark.IsChecked = memory.Watermark;
         _fillingShare = false;
-        ShowShareFormat();
+        ShowShareSound();
         _shareMade = null;
         ShareFolderButton.IsVisible = false;
         ShareStatus.Text = $"Saved next to the cleaned file as {System.IO.Path.GetFileName(ShareTarget())}.";
@@ -2183,71 +2178,26 @@ public partial class MainWindow : Window
         PageScroller.Effect = new BlurEffect { Radius = 10 };
     }
 
-    /// <summary>Layouts, the sound default and the note follow the format.</summary>
-    private void ShowShareFormat()
+    /// <summary>Sound is remembered per format: on for 16:9, off for 9:16 unless changed.</summary>
+    private void ShowShareSound()
     {
         _fillingShare = true;
-        var memory = ShareMemory;
-        var vertical = ShareIsVertical;
-        ShareLayoutA.Content = vertical ? "Stacked" : "Side by side";
-        ShareLayoutA.Tag = vertical ? "stacked" : "side";
-        ShareLayoutB.Content = "Wipe"; ShareLayoutB.Tag = "wipe";
-        ShareLayoutC.Content = "Flip"; ShareLayoutC.Tag = "flip";
-        ShareLayoutC.IsVisible = !vertical;
-        var layout = vertical ? memory.LayoutVertical : memory.LayoutLandscape;
-        var choices = vertical ? new[] { ShareLayoutA, ShareLayoutB } : new[] { ShareLayoutA, ShareLayoutB, ShareLayoutC };
-        var chosen = choices.FirstOrDefault(choice => choice.Tag as string == layout) ?? ShareLayoutA;
-        foreach (var choice in new[] { ShareLayoutA, ShareLayoutB, ShareLayoutC }) choice.IsChecked = ReferenceEquals(choice, chosen);
-        ShareSound.IsChecked = vertical ? memory.SoundVertical : memory.SoundLandscape;
+        ShareSound.IsChecked = ShareIsVertical ? ShareMemory.SoundVertical : ShareMemory.SoundLandscape;
         _fillingShare = false;
-        ShowShareLayoutNote();
-    }
-
-    private string ShareLayout =>
-        new[] { ShareLayoutA, ShareLayoutB, ShareLayoutC }.FirstOrDefault(choice => choice.IsChecked == true && choice.IsVisible)?.Tag as string
-        ?? (ShareIsVertical ? "stacked" : "side");
-
-    private int ShareLength =>
-        new[] { ShareWhole, ShareBest15, ShareBest30, ShareBest60 }.FirstOrDefault(choice => choice.IsChecked == true)?.Tag is string tag
-            ? int.Parse(tag, CultureInfo.InvariantCulture) : 30;
-
-    private void ShowShareLayoutNote()
-    {
-        ShareLayoutNote.Text = (ShareIsVertical, ShareLayout) switch
-        {
-            (true, "wipe") => "The cleaned picture fills the screen and follows the action; a moving orange line reveals the original.",
-            (true, _) => "Original on top, cleaned below, each as large as the phone screen allows.",
-            (false, "wipe") => "One picture; an orange line sweeps across, original on the left, cleaned on the right.",
-            (false, "flip") => "The whole picture switches between original and cleaned every two seconds.",
-            _ => "Original and cleaned next to each other, labelled, on the same frame.",
-        };
     }
 
     private void ShareFormat_Changed(object? sender, RoutedEventArgs e)
     {
-        if (_fillingShare || ShareLayoutA == null || sender is RadioButton { IsChecked: not true }) return;
-        ShowShareFormat();
+        if (_fillingShare || ShareSound == null || sender is RadioButton { IsChecked: not true }) return;
+        ShowShareSound();
         RememberShare();
         ShareStatus.Text = $"Saved next to the cleaned file as {System.IO.Path.GetFileName(ShareTarget())}.";
     }
 
-    private void ShareLayout_Changed(object? sender, RoutedEventArgs e)
-    {
-        if (_fillingShare || ShareLayoutNote == null || sender is RadioButton { IsChecked: not true }) return;
-        ShowShareLayoutNote();
-        RememberShare();
-    }
-
-    private void ShareOption_Changed(object? sender, RoutedEventArgs e)
+    private void ShareSound_Changed(object? sender, RoutedEventArgs e)
     {
         if (_fillingShare || ShareSound == null) return;
         RememberShare();
-    }
-
-    private void ShareMore_Click(object? sender, RoutedEventArgs e)
-    {
-        ShareMore.IsVisible = !ShareMore.IsVisible;
-        ShareMoreButton.Content = ShareMore.IsVisible ? "Fewer options ▴" : "More options ▾";
     }
 
     private void RememberShare()
@@ -2255,20 +2205,17 @@ public partial class MainWindow : Window
         var memory = ShareMemory;
         var vertical = ShareIsVertical;
         memory.Format = vertical ? "vertical" : "landscape";
-        if (vertical) { memory.LayoutVertical = ShareLayout; memory.SoundVertical = ShareSound.IsChecked == true; }
-        else { memory.LayoutLandscape = ShareLayout; memory.SoundLandscape = ShareSound.IsChecked == true; }
-        memory.Length = ShareLength;
-        memory.Highlights = ShareHighlights.IsChecked == true;
-        memory.Watermark = ShareWatermark.IsChecked == true;
+        if (vertical) memory.SoundVertical = ShareSound.IsChecked == true;
+        else memory.SoundLandscape = ShareSound.IsChecked == true;
         _settings.Save();
     }
 
-    /// <summary>"name-share.mp4" or "name-short.mp4" next to the cleaned file, numbered if taken.</summary>
+    /// <summary>"name-youtube.mp4" or "name-short.mp4" next to the cleaned file, numbered if taken.</summary>
     private string ShareTarget()
     {
         var output = _reviewOutput ?? "";
         var folder = System.IO.Path.GetDirectoryName(output) ?? "";
-        var stem = System.IO.Path.GetFileNameWithoutExtension(output) + (ShareIsVertical ? "-short" : "-share");
+        var stem = System.IO.Path.GetFileNameWithoutExtension(output) + (ShareIsVertical ? "-short" : "-youtube");
         var target = System.IO.Path.Combine(folder, stem + ".mp4");
         for (var number = 2; File.Exists(target); number++) target = System.IO.Path.Combine(folder, $"{stem}-{number}.mp4");
         return target;
@@ -2294,7 +2241,7 @@ public partial class MainWindow : Window
 
     private async void ShareMake_Click(object? sender, RoutedEventArgs e)
     {
-        if (_shareCancel != null || _reviewSource == null || _reviewOutput == null) return;
+        if (_shareCancel != null || _reviewOutput == null) return;
         if (!File.Exists(_reviewOutput)) { ShareStatus.Text = "The cleaned file is no longer there."; return; }
         RememberShare();
         var target = ShareTarget();
@@ -2302,18 +2249,16 @@ public partial class MainWindow : Window
         _shareCancel = new CancellationTokenSource();
         var started = DateTime.UtcNow;
         ShareOverlay.IsVisible = false;
-        ShowBusy(vertical ? "Making the 9:16 video" : "Making the share video",
-            "Finding the biggest repairs, then composing original and cleaned frame by frame.", () => _shareCancel?.Cancel());
+        ShowBusy(vertical ? "Making the 9:16 video" : "Making the 16:9 video",
+            vertical ? "Cropping the cleaned clip to the phone screen, following the action." : "Placing the cleaned clip in a 16:9 frame.",
+            () => _shareCancel?.Cancel());
         UpdateBusy(0);
         try
         {
             var result = await EngineAsync(new
             {
-                action = "share", source = _reviewSource, target = _reviewOutput, output = target,
-                segments = _reviewSegments.Select(part => new[] { part.In, part.Out }).ToList(),
-                format = vertical ? "vertical" : "landscape", layout = ShareLayout, length = ShareLength,
-                highlights = ShareHighlights.IsChecked == true, sound = ShareSound.IsChecked == true,
-                watermark = ShareWatermark.IsChecked == true,
+                action = "share", target = _reviewOutput, output = target,
+                format = vertical ? "vertical" : "landscape", sound = ShareSound.IsChecked == true,
             }, item =>
             {
                 var done = item.GetProperty("fraction").GetDouble();
@@ -2321,9 +2266,7 @@ public partial class MainWindow : Window
             }, _shareCancel.Token);
             _shareMade = target;
             var seconds = result.GetProperty("duration").GetDouble();
-            var moments = result.GetProperty("highlights").GetArrayLength();
-            ShareStatus.Text = $"Saved {System.IO.Path.GetFileName(target)}: {seconds:0.0} s, {result.GetProperty("width").GetInt32()}×{result.GetProperty("height").GetInt32()}"
-                + (moments > 0 ? $", {moments} repair{(moments == 1 ? "" : "s")} in slow motion." : ".");
+            ShareStatus.Text = $"Saved {System.IO.Path.GetFileName(target)}: {seconds:0.0} s, {result.GetProperty("width").GetInt32()}×{result.GetProperty("height").GetInt32()}.";
             ShareFolderButton.IsVisible = true;
         }
         catch (OperationCanceledException)
