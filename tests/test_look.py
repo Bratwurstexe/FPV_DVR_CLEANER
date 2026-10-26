@@ -188,15 +188,21 @@ class LookExportTests(unittest.TestCase):
                 self.assertTrue(made.has_audio)
                 self.assertAlmostEqual(made.duration, 1.5, delta=0.3)
 
-            def middle_frame(path: Path) -> np.ndarray:
+            def average_frame(path: Path) -> np.ndarray:
+                # Every frame read in order and averaged: seeking lands on different frames of
+                # the moving test pattern with different FFmpeg builds (it did on macOS).
                 capture = cv2.VideoCapture(str(path))
-                capture.set(cv2.CAP_PROP_POS_FRAMES, 8)
-                okay, frame = capture.read()
+                frames = []
+                while True:
+                    okay, frame = capture.read()
+                    if not okay:
+                        break
+                    frames.append(frame.astype(np.float32))
                 capture.release()
-                self.assertTrue(okay)
-                return frame.astype(np.float32)
+                self.assertGreater(len(frames), 10)
+                return np.mean(frames, axis=0)
 
-            before, after = middle_frame(folder / "plain.mp4"), middle_frame(folder / "styled.mp4")
+            before, after = average_frame(folder / "plain.mp4"), average_frame(folder / "styled.mp4")
             # The vignette darkens the corners, the middle stays close.
             corner = (slice(0, 12), slice(0, 16))
             self.assertLess(after[corner].mean(), before[corner].mean() - 8)
